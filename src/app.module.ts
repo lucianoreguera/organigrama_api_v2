@@ -9,6 +9,7 @@ import { CommonModule } from './common/common.module';
 import { LevelsModule } from './levels/levels.module';
 import { SeedModule } from './seed/seed.module';
 import { PeopleModule } from './people/people.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { PeopleModule } from './people/people.module';
     LevelsModule,
     SeedModule,
     PeopleModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
