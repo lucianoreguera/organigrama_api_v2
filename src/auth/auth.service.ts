@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import {
+  KeycloakAdminService,
+  CreateKeycloakUserDto,
+} from './keycloak-admin.service';
+import { RegisterDto } from './dto/register.dto';
 
 export interface KeycloakTokenResponse {
   access_token: string;
@@ -24,7 +29,10 @@ export class AuthService {
   private readonly clientId: string;
   private readonly clientSecret: string;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private keycloakAdminService: KeycloakAdminService,
+  ) {
     this.keycloakUrl = this.configService.get('KEYCLOAK_BASE_URL')!;
     this.realm = this.configService.get('KEYCLOAK_REALM')!;
     this.clientId = this.configService.get('KEYCLOAK_CLIENT_ID')!;
@@ -104,6 +112,41 @@ export class AuthService {
       return response.data;
     } catch (error) {
       throw new Error('Invalid access token');
+    }
+  }
+
+  // AGREGAR ESTE MÉTODO al final de la clase AuthService
+  /**
+   * Registra un nuevo usuario en Keycloak
+   */
+  async register(registerDto: RegisterDto): Promise<{
+    message: string;
+    username: string;
+    userId: string;
+  }> {
+    try {
+      // Crear usuario en Keycloak
+      const keycloakUser = await this.keycloakAdminService.createUser({
+        username: registerDto.username,
+        password: registerDto.password,
+        email: registerDto.email,
+        firstName: registerDto.firstName,
+        lastName: registerDto.lastName,
+        temporary: false,
+      });
+
+      console.log(
+        `✅ Usuario registrado exitosamente: ${registerDto.username}`,
+      );
+
+      return {
+        message: 'Usuario registrado exitosamente',
+        username: keycloakUser.username,
+        userId: keycloakUser.id,
+      };
+    } catch (error) {
+      console.error('Error en registro de usuario:', error);
+      throw error; // Re-lanzar el error para que el controller lo maneje
     }
   }
 }

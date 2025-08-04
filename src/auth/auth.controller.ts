@@ -1,10 +1,11 @@
-import { Body, Controller, Post, Get, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Get, UseGuards, Param } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-
+import { Public } from 'nest-keycloak-connect';
 import { AuthService, LoginDto } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { RolesGuard } from './guards/roles.guard';
 import { RequireRoles } from './decorators/roles.decorator';
+import { RegisterDto } from './dto/register.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -13,6 +14,12 @@ export class AuthController {
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
+  }
+
+  @Public()
+  @Post('register')
+  async register(@Body() registerDto: RegisterDto) {
+    return this.authService.register(registerDto);
   }
 
   @Post('refresh')
@@ -52,6 +59,16 @@ export class AuthController {
       message: 'This is an admin-only endpoint',
       user: user.username,
       roles: user.roles,
+    };
+  }
+
+  @Public()
+  @Get('check-username/:username')
+  async checkUsername(@Param('username') username: string) {
+    // Este endpoint puede implementarse más tarde si lo necesitas
+    return {
+      available: true,
+      message: 'Funcionalidad de verificación pendiente de implementar',
     };
   }
 }
