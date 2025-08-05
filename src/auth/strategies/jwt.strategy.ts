@@ -7,12 +7,6 @@ import { passportJwtSecret } from 'jwks-rsa';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private configService: ConfigService) {
-    console.log('🔥 JWT STRATEGY CONSTRUCTOR EJECUTADO');
-    console.log(
-      '🔥 JWKS URI:',
-      `${configService.get<string>('KEYCLOAK_BASE_URL')}/realms/${configService.get<string>('KEYCLOAK_REALM')}/protocol/openid-connect/certs`,
-    );
-
     super({
       secretOrKeyProvider: passportJwtSecret({
         cache: true,
@@ -28,9 +22,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    console.log('🔥 JWT VALIDATE EJECUTADO:', payload);
-    // console.log('JWT Payload recibido:', payload); // Para debug
-
     if (!payload.sub) {
       throw new UnauthorizedException('Invalid token payload');
     }

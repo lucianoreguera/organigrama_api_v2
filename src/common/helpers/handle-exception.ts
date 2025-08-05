@@ -9,7 +9,6 @@ export function handleExceptions(error: any, modelName: string) {
       `${modelName} already exists in db ${JSON.stringify(error.keyValue)}`,
     );
   }
-  console.log(error);
   throw new InternalServerErrorException(
     `Can't create ${modelName.toLowerCase()} - Check server logs`,
   );

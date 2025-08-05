@@ -135,17 +135,12 @@ export class AuthService {
         temporary: false,
       });
 
-      console.log(
-        `✅ Usuario registrado exitosamente: ${registerDto.username}`,
-      );
-
       return {
         message: 'Usuario registrado exitosamente',
         username: keycloakUser.username,
         userId: keycloakUser.id,
       };
     } catch (error) {
-      console.error('Error en registro de usuario:', error);
       throw error; // Re-lanzar el error para que el controller lo maneje
     }
   }

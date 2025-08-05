@@ -56,7 +56,6 @@ export class LevelsService {
 
   async findOne(term: string) {
     let level: Level | null = null;
-    console.log(term);
 
     level = await this.levelModel.findOne({ name: term?.toLowerCase().trim() });
 

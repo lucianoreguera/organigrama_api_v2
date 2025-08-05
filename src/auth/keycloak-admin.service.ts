@@ -58,10 +58,6 @@ export class KeycloakAdminService {
       params.append('username', this.adminUsername);
       params.append('password', this.adminPassword);
 
-      console.log('🔑 Intentando autenticación admin en realm:', this.realm);
-      console.log('🔑 URL:', url);
-      console.log('🔑 Username:', this.adminUsername);
-
       let response;
       try {
         response = await axios.post(url, params, {
@@ -70,9 +66,6 @@ export class KeycloakAdminService {
           },
         });
       } catch (firstError) {
-        console.log('❌ Falló en realm actual, intentando con master realm...');
-
-        // Si falla, intentar con master realm
         url = `${this.keycloakBaseUrl}/realms/master/protocol/openid-connect/token`;
 
         response = await axios.post(url, params, {
@@ -82,15 +75,8 @@ export class KeycloakAdminService {
         });
       }
 
-      console.log('✅ Token de admin obtenido exitosamente');
       return response.data.access_token;
     } catch (error) {
-      console.error('❌ Error obteniendo token de admin:', {
-        url: error.config?.url,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-      });
       throw new InternalServerErrorException(
         'Error de configuración de Keycloak: credenciales de admin incorrectas',
       );
@@ -129,7 +115,6 @@ export class KeycloakAdminService {
 
       return false;
     } catch (error) {
-      console.error('Error verificando existencia de usuario:', error);
       return false; // En caso de error, asumimos que no existe y dejamos que Keycloak maneje la validación
     }
   }
@@ -216,7 +201,6 @@ export class KeycloakAdminService {
         }
       }
 
-      console.error('Error creando usuario en Keycloak:', error);
       throw new InternalServerErrorException('Error interno al crear usuario');
     }
   }
@@ -240,7 +224,6 @@ export class KeycloakAdminService {
 
       const client = clientsResponse.data[0];
       if (!client) {
-        console.warn(`Cliente ${this.clientId} no encontrado`);
         return;
       }
 
@@ -251,7 +234,6 @@ export class KeycloakAdminService {
 
       const role = rolesResponse.data.find((r: any) => r.name === roleName);
       if (!role) {
-        console.warn(`Rol ${roleName} no encontrado`);
         return;
       }
 
@@ -263,10 +245,7 @@ export class KeycloakAdminService {
           'Content-Type': 'application/json',
         },
       });
-
-      console.log(`Rol ${roleName} asignado al usuario ${userId}`);
     } catch (error) {
-      console.error('Error asignando rol:', error);
       // No lanzamos error aquí porque el usuario ya fue creado exitosamente
     }
   }
@@ -282,10 +261,7 @@ export class KeycloakAdminService {
       await axios.delete(url, {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
-
-      console.log(`Usuario ${userId} eliminado de Keycloak`);
     } catch (error) {
-      console.error('Error eliminando usuario de Keycloak:', error);
       throw new InternalServerErrorException('Error eliminando usuario');
     }
   }
@@ -307,7 +283,6 @@ export class KeycloakAdminService {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         return null;
       }
-      console.error('Error obteniendo usuario:', error);
       throw new InternalServerErrorException('Error obteniendo usuario');
     }
   }

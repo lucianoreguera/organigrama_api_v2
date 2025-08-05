@@ -34,7 +34,6 @@ export class PeopleService {
 
     if (search) {
       const searchRegex = new RegExp(search, 'i');
-      console.log(searchRegex);
       filters.$or = [{ cuil: searchRegex }, { lastname: searchRegex }];
     }
 

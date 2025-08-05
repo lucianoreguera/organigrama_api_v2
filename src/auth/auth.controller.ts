@@ -30,7 +30,6 @@ export class AuthController {
   @Get('profile')
   @UseGuards(AuthGuard('jwt'))
   async getProfile(@CurrentUser() user: any) {
-    console.log('🔥 LLEGÓ AL CONTROLLER PROFILE');
     return {
       userId: user.userId,
       username: user.username,

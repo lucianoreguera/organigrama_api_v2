@@ -18,7 +18,6 @@ export class UsersService {
     });
 
     if (!user) {
-      console.log(`🆕 Creando nuevo usuario: ${keycloakUser.username}`);
       user = new this.userModel({
         keycloakId: keycloakUser.userId,
         username: keycloakUser.username,
@@ -31,10 +30,6 @@ export class UsersService {
       });
       await user.save();
     } else {
-      // Actualizar información que puede haber cambiado en Keycloak
-      console.log(
-        `🔄 Actualizando usuario existente: ${keycloakUser.username}`,
-      );
       user.roles = keycloakUser.roles || [];
       user.realmRoles = keycloakUser.realmRoles || [];
       user.firstName = keycloakUser.firstName;
