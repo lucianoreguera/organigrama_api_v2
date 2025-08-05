@@ -10,14 +10,10 @@ import { handleExceptions } from '../common/helpers/handle-exception';
 
 @Injectable()
 export class LevelsService {
-  private defaultLimit: number;
   constructor(
     @InjectModel(Level.name)
     private readonly levelModel: Model<Level>,
-    private readonly configService: ConfigService,
-  ) {
-    this.defaultLimit = this.configService.get<number>('defaultLimit')!;
-  }
+  ) {}
 
   async create(createLevelDto: CreateLevelDto) {
     try {

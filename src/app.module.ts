@@ -11,6 +11,7 @@ import { SeedModule } from './seed/seed.module';
 import { PeopleModule } from './people/people.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { DepartmentsModule } from './departments/departments.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { UsersModule } from './users/users.module';
     PeopleModule,
     AuthModule,
     UsersModule,
+    DepartmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
