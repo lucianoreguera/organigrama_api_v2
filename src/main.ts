@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -16,6 +17,42 @@ async function bootstrap() {
     }),
   );
   app.setGlobalPrefix('api/v2');
+  // Configuración de Swagger
+  const config = new DocumentBuilder()
+    .setTitle('Organigrama Municipal')
+    .setDescription('Documentación de la API REST')
+    .setVersion('2.0')
+    // .addTag('usuarios', 'Operaciones relacionadas con usuarios')
+    // .addTag('productos', 'Operaciones relacionadas con productos')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        name: 'JWT',
+        description: 'Ingresa tu token JWT',
+        in: 'header',
+      },
+      'JWT-auth', // Este nombre se usa en los decoradores
+    )
+    .addServer('http://localhost:3000', 'Desarrollo')
+    // .addServer('https://mi-api.com', 'Producción')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+
+  // Configurar la ruta de Swagger
+  SwaggerModule.setup('api/docs', app, document, {
+    customSiteTitle: 'API Organigrama Municipal - Documentación',
+    customfavIcon: 'https://farmacia.cc.gob.ar/img/favicon.png',
+    // customJs: [
+    //   'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-bundle.min.js',
+    //   'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui-standalone-preset.min.js',
+    // ],
+    // customCssUrl: [
+    //   'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.15.5/swagger-ui.min.css',
+    // ],
+  });
 
   await app.listen(process.env.PORT ?? 3000);
 }
