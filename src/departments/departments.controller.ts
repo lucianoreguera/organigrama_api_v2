@@ -5,13 +5,12 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   Query,
 } from '@nestjs/common';
 import { DepartmentsService } from './departments.service';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
-import { QueryPaginateDto } from '../common/dto/query-paginate.dto';
+import { QueryDepartmentDto } from './dto/query-department.dto';
 import { ParseMongoIdPipe } from '../common/pipes/parse-mongo-id.pipe';
 
 @Controller('departments')
@@ -24,8 +23,8 @@ export class DepartmentsController {
   }
 
   @Get()
-  findAll(@Query() queryPaginateDto: QueryPaginateDto) {
-    return this.departmentsService.findAll(queryPaginateDto);
+  findAll(@Query() queryDepartmentDto: QueryDepartmentDto) {
+    return this.departmentsService.findAll(queryDepartmentDto);
   }
 
   @Get(':id')

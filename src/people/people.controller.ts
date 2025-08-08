@@ -11,8 +11,8 @@ import {
 import { PeopleService } from './people.service';
 import { CreatePersonDto } from './dto/create-person.dto';
 import { UpdatePersonDto } from './dto/update-person.dto';
-import { QueryPaginateDto } from '../common/dto/query-paginate.dto';
 import { ParseMongoIdPipe } from '../common/pipes/parse-mongo-id.pipe';
+import { QueryPersonDto } from './dto/query-person.dto';
 
 @Controller('people')
 export class PeopleController {
@@ -24,8 +24,8 @@ export class PeopleController {
   }
 
   @Get()
-  findAll(@Query() queryPaginateDto: QueryPaginateDto) {
-    return this.peopleService.findAll(queryPaginateDto);
+  findAll(@Query() queryPersonDto: QueryPersonDto) {
+    return this.peopleService.findAll(queryPersonDto);
   }
 
   @Get(':id')

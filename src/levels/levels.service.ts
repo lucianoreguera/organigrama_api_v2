@@ -1,18 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { ConfigService } from '@nestjs/config';
 import { isValidObjectId, Model } from 'mongoose';
 import { CreateLevelDto } from './dto/create-level.dto';
 import { UpdateLevelDto } from './dto/update-level.dto';
 import { Level } from './entities/level.entity';
-import { QueryPaginateDto } from '../common/dto/query-paginate.dto';
 import { handleExceptions } from '../common/helpers/handle-exception';
+import { QueryLevelDto } from './dto/query-level.dto';
+import { PaginationService } from '../common/services/pagination.service';
 
 @Injectable()
 export class LevelsService {
   constructor(
     @InjectModel(Level.name)
     private readonly levelModel: Model<Level>,
+    private readonly paginationService: PaginationService,
   ) {}
 
   async create(createLevelDto: CreateLevelDto) {
@@ -23,31 +24,54 @@ export class LevelsService {
     }
   }
 
-  async findAll(queryPaginateDto: QueryPaginateDto) {
-    const { search, limit, offset, sort } = queryPaginateDto;
-    const filters: any = {};
+  // async findAll(queryPaginateDto: QueryPaginateDto) {
+  //   const { search, limit, offset, sort } = queryPaginateDto;
+  //   const filters: any = {};
 
-    if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filters.$or = [{ name: searchRegex }];
-    }
+  //   if (search) {
+  //     const searchRegex = new RegExp(search, 'i');
+  //     filters.$or = [{ name: searchRegex }];
+  //   }
 
-    const mongooseQuery = this.levelModel.find(filters);
-    mongooseQuery.select('-__v');
+  //   const mongooseQuery = this.levelModel.find(filters);
+  //   mongooseQuery.select('-__v');
 
-    if (limit) {
-      mongooseQuery.limit(limit);
-    }
+  //   if (limit) {
+  //     mongooseQuery.limit(limit);
+  //   }
 
-    if (offset) {
-      mongooseQuery.skip(offset);
-    }
+  //   if (offset) {
+  //     mongooseQuery.skip(offset);
+  //   }
 
-    if (sort) {
-      mongooseQuery.sort(sort.replace(/,/g, ' '));
-    }
+  //   if (sort) {
+  //     mongooseQuery.sort(sort.replace(/,/g, ' '));
+  //   }
 
-    return mongooseQuery.exec();
+  //   return mongooseQuery.exec();
+  // }
+  async findAll(queryLevelDto: QueryLevelDto) {
+    // Si hay filtros específicos para levels, se agrega aquí:
+    const baseFilters: any = {};
+
+    // Ejemplo de filtros específicos:
+    // if (queryLevelDto.status) {
+    //   baseFilters.status = queryLevelDto.status;
+    // }
+
+    // Configuración específica para el modelo Level
+    const paginationOptions = {
+      searchFields: ['name'], // Ajustar según los campos del modelo
+      defaultSort: 'name', // Ordenamiento por defecto
+      selectFields: '-__v', // campos a excluir
+    };
+
+    return this.paginationService.paginate(
+      this.levelModel,
+      queryLevelDto,
+      baseFilters,
+      paginationOptions,
+    );
   }
 
   async findOne(term: string) {

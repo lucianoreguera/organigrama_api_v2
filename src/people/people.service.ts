@@ -6,19 +6,16 @@ import { CreatePersonDto } from './dto/create-person.dto';
 import { UpdatePersonDto } from './dto/update-person.dto';
 import { Person } from './entities/person.entity';
 import { handleExceptions } from '../common/helpers/handle-exception';
-import { QueryPaginateDto } from '../common/dto/query-paginate.dto';
+import { QueryPersonDto } from './dto/query-person.dto';
+import { PaginationService } from '../common/services/pagination.service';
 
 @Injectable()
 export class PeopleService {
-  private defaultLimit: number;
-
   constructor(
     @InjectModel(Person.name)
     private readonly peopleModel: Model<Person>,
-    private readonly configService: ConfigService,
-  ) {
-    this.defaultLimit = this.configService.get<number>('defaultLimit')!;
-  }
+    private readonly paginationService: PaginationService,
+  ) {}
 
   async create(createPersonDto: CreatePersonDto) {
     try {
@@ -28,31 +25,21 @@ export class PeopleService {
     }
   }
 
-  async findAll(queryPaginateDto: QueryPaginateDto) {
-    const { search, limit, offset, sort } = queryPaginateDto;
-    const filters: any = {};
+  findAll(queryPersonDto: QueryPersonDto) {
+    const baseFilters: any = {};
 
-    if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filters.$or = [{ cuil: searchRegex }, { lastname: searchRegex }];
-    }
+    const paginationOptions = {
+      searchFields: ['lastname', 'cuil'], // Ajustar según los campos del modelo
+      defaultSort: 'lastname', // Ordenamiento por defecto
+      selectFields: '-__v', // campos a excluir
+    };
 
-    const mongooseQuery = this.peopleModel.find(filters);
-    mongooseQuery.select('-__v');
-
-    if (limit) {
-      mongooseQuery.limit(limit);
-    }
-
-    if (offset) {
-      mongooseQuery.skip(offset);
-    }
-
-    if (sort) {
-      mongooseQuery.sort(sort.replace(/,/g, ' '));
-    }
-
-    return mongooseQuery.exec();
+    return this.paginationService.paginate(
+      this.peopleModel,
+      queryPersonDto,
+      baseFilters,
+      paginationOptions,
+    );
   }
 
   async findOne(id: string) {

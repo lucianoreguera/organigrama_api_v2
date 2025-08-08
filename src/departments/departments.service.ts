@@ -5,13 +5,15 @@ import { isValidObjectId, Model } from 'mongoose';
 import { Department } from './entities/department.entity';
 import { InjectModel } from '@nestjs/mongoose';
 import { handleExceptions } from 'src/common/helpers/handle-exception';
-import { QueryPaginateDto } from '../common/dto/query-paginate.dto';
+import { QueryDepartmentDto } from './dto/query-department.dto';
+import { PaginationService } from '../common/services/pagination.service';
 
 @Injectable()
 export class DepartmentsService {
   constructor(
     @InjectModel(Department.name)
     private readonly departmentModel: Model<Department>,
+    private readonly paginationService: PaginationService,
   ) {}
 
   async create(createDepartmentDto: CreateDepartmentDto) {
@@ -22,31 +24,21 @@ export class DepartmentsService {
     }
   }
 
-  findAll(queryPaginateDto: QueryPaginateDto) {
-    const { search, limit, offset, sort } = queryPaginateDto;
-    const filters: any = {};
+  findAll(queryDepartmentDto: QueryDepartmentDto) {
+    const baseFilters: any = {};
 
-    if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filters.$or = [{ name: searchRegex }];
-    }
+    const paginationOptions = {
+      searchFields: ['name'], // Ajustar según los campos del modelo
+      defaultSort: 'name', // Ordenamiento por defecto
+      selectFields: '-__v', // campos a excluir
+    };
 
-    const mongooseQuery = this.departmentModel.find(filters);
-    mongooseQuery.select('-__v');
-
-    if (limit) {
-      mongooseQuery.limit(limit);
-    }
-
-    if (offset) {
-      mongooseQuery.skip(offset);
-    }
-
-    if (sort) {
-      mongooseQuery.sort(sort.replace(/,/g, ' '));
-    }
-
-    return mongooseQuery.exec();
+    return this.paginationService.paginate(
+      this.departmentModel,
+      queryDepartmentDto,
+      baseFilters,
+      paginationOptions,
+    );
   }
 
   async findOne(id: string) {

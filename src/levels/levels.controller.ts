@@ -11,8 +11,8 @@ import {
 import { LevelsService } from './levels.service';
 import { CreateLevelDto } from './dto/create-level.dto';
 import { UpdateLevelDto } from './dto/update-level.dto';
-import { QueryPaginateDto } from '../common/dto/query-paginate.dto';
 import { ParseMongoIdPipe } from '../common/pipes/parse-mongo-id.pipe';
+import { QueryLevelDto } from './dto/query-level.dto';
 
 @Controller('levels')
 export class LevelsController {
@@ -24,8 +24,8 @@ export class LevelsController {
   }
 
   @Get()
-  findAll(@Query() queryPaginateDto: QueryPaginateDto) {
-    return this.levelsService.findAll(queryPaginateDto);
+  findAll(@Query() queryLevelDto: QueryLevelDto) {
+    return this.levelsService.findAll(queryLevelDto);
   }
 
   @Get(':term')
