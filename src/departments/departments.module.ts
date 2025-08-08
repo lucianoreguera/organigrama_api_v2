@@ -17,6 +17,6 @@ import { Department, DepartmentSchema } from './entities/department.entity';
       },
     ]),
   ],
-  exports: [MongooseModule],
+  exports: [MongooseModule, DepartmentsService],
 })
 export class DepartmentsModule {}

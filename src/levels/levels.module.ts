@@ -17,6 +17,6 @@ import { Level, LevelSchema } from './entities/level.entity';
       },
     ]),
   ],
-  exports: [MongooseModule],
+  exports: [MongooseModule, LevelsService],
 })
 export class LevelsModule {}

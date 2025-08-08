@@ -12,6 +12,7 @@ import { PeopleModule } from './people/people.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { DepartmentsModule } from './departments/departments.module';
+import { OrganigramsVersionModule } from './organigrams_version/organigrams_version.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { DepartmentsModule } from './departments/departments.module';
     AuthModule,
     UsersModule,
     DepartmentsModule,
+    OrganigramsVersionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

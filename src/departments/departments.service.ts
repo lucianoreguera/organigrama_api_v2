@@ -87,4 +87,12 @@ export class DepartmentsService {
     await department.save();
     return department;
   }
+
+  async findByName(name: string) {
+    return await this.departmentModel.findOne({ name: name.toLowerCase() });
+  }
+
+  async findByCode(code: string) {
+    return await this.departmentModel.findOne({ code: code.toLowerCase() });
+  }
 }
