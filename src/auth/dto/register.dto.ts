@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsString,
   IsEmail,
@@ -8,6 +9,12 @@ import {
 } from 'class-validator';
 
 export class RegisterDto {
+  @ApiProperty({
+    description: 'El nombre de usuario único para el login.',
+    example: 'john_doe',
+    minLength: 3,
+    maxLength: 50,
+  })
   @IsString()
   @MinLength(3, { message: 'El username debe tener al menos 3 caracteres' })
   @MaxLength(50, { message: 'El username no puede tener más de 50 caracteres' })
@@ -17,6 +24,12 @@ export class RegisterDto {
   })
   username: string;
 
+  @ApiProperty({
+    description: 'La contraseña del usuario. Debe ser segura.',
+    example: 'Password123!',
+    minLength: 8,
+    maxLength: 128,
+  })
   @IsString()
   @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
   @MaxLength(128, {
@@ -28,16 +41,31 @@ export class RegisterDto {
   })
   password: string;
 
+  @ApiProperty({
+    description: 'El email del usuario (opcional).',
+    example: 'john.doe@example.com',
+    required: false,
+  })
   @IsOptional()
   @IsEmail({}, { message: 'Formato de email inválido' })
   @MaxLength(100, { message: 'El email no puede tener más de 100 caracteres' })
   email?: string;
 
+  @ApiProperty({
+    description: 'El nombre del usuario (opcional).',
+    example: 'John',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(50, { message: 'El nombre no puede tener más de 50 caracteres' })
   firstName?: string;
 
+  @ApiProperty({
+    description: 'El apellido del usuario (opcional).',
+    example: 'Doe',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(50, { message: 'El apellido no puede tener más de 50 caracteres' })
