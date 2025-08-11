@@ -112,21 +112,21 @@ export class OrganigramVersionsService {
       // TODO: Implementar findByName y findByCode en DepartmentsService
       let departmentRecord: any = null;
 
-      // Por ahora siempre crear el departamento
-      // Cuando tengas findByName y findByCode, uncommentar:
-      /*
       try {
-        departmentRecord = await this.departmentsService.findByName(nodeInput.department_data.name);
+        departmentRecord = await this.departmentsService.findByName(
+          nodeInput.department_data.name,
+        );
       } catch (error) {
         if (nodeInput.department_data.code) {
           try {
-            departmentRecord = await this.departmentsService.findByCode(nodeInput.department_data.code);
+            departmentRecord = await this.departmentsService.findByCode(
+              nodeInput.department_data.code,
+            );
           } catch (codeError) {
             departmentRecord = null;
           }
         }
       }
-      */
 
       if (!departmentRecord) {
         this.logger.log(
