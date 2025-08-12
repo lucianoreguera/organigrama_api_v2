@@ -21,6 +21,8 @@ import { User } from '../users/entities/user.entity';
 import { DepartmentsService } from '../departments/departments.service';
 import { LevelsService } from '../levels/levels.service';
 import { handleExceptions } from '../common/helpers/handle-exception';
+import { PeopleService } from '../people/people.service';
+import { AssignResponsibleOfficialDto } from './dto/assign-responsible-official.dto';
 
 interface FrontendToMongoIdMap {
   [frontendId: string]: Types.ObjectId;
@@ -37,6 +39,7 @@ export class OrganigramVersionsService {
     private readonly departmentNodeModel: Model<DepartmentNode>,
     private readonly departmentsService: DepartmentsService,
     private readonly levelsService: LevelsService,
+    private readonly peopleService: PeopleService,
   ) {}
 
   async processAndCreateVersion(
@@ -727,6 +730,82 @@ export class OrganigramVersionsService {
         `Error activando versión ${versionId}: ${error.message}`,
       );
       throw error;
+    }
+  }
+
+  async assignResponsibleOfficial(
+    dto: AssignResponsibleOfficialDto,
+  ): Promise<OrganigramVersion> {
+    const { versionId, responsibleId, nodeId } = dto;
+
+    // Validar existencia de entidades en paralelo
+    const [version, node, responsiblePerson] = await Promise.all([
+      this.validateVersionExists(versionId),
+      this.validateNodeExists(nodeId),
+      this.validateResponsibleOfficial(responsibleId),
+    ]);
+
+    // Actualizar el nodo con el funcionario responsable
+    await this.updateNodeResponsible(nodeId, responsibleId);
+
+    return version;
+  }
+
+  private async validateVersionExists(
+    versionId: string,
+  ): Promise<OrganigramVersion> {
+    const version = await this.organigramVersionModel.findById(versionId);
+    if (!version) {
+      throw new NotFoundException(
+        `Versión del organigrama con ID ${versionId} no encontrada`,
+      );
+    }
+    return version;
+  }
+
+  private async validateNodeExists(nodeId: string): Promise<any> {
+    const node = await this.departmentNodeModel.findById(nodeId);
+    if (!node) {
+      throw new NotFoundException(
+        `Nodo de departamento con ID ${nodeId} no encontrado`,
+      );
+    }
+    return node;
+  }
+
+  private async validateResponsibleOfficial(
+    responsibleId: string,
+  ): Promise<any> {
+    const person = await this.peopleService.findOne(responsibleId);
+
+    if (!person) {
+      throw new NotFoundException(
+        `Funcionario con ID ${responsibleId} no encontrado`,
+      );
+    }
+
+    if (person.person_type !== 'official') {
+      throw new BadRequestException(
+        `La persona con ID ${responsibleId} no tiene el tipo de funcionario requerido`,
+      );
+    }
+
+    return person;
+  }
+
+  private async updateNodeResponsible(
+    nodeId: string,
+    responsibleId: string,
+  ): Promise<void> {
+    const result = await this.departmentNodeModel.updateOne(
+      { _id: nodeId },
+      { $set: { responsible_official: new Types.ObjectId(responsibleId) } },
+    );
+
+    if (result.matchedCount === 0) {
+      throw new NotFoundException(
+        `No se pudo actualizar el nodo con ID ${nodeId}`,
+      );
     }
   }
 }

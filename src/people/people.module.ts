@@ -17,6 +17,6 @@ import { Person, PersonSchema } from './entities/person.entity';
       },
     ]),
   ],
-  exports: [MongooseModule],
+  exports: [MongooseModule, PeopleService],
 })
 export class PeopleModule {}

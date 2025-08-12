@@ -33,6 +33,8 @@ import {
 // import { User } from '../users/entities/user.entity';
 import { ParseMongoIdPipe } from '../common/pipes/parse-mongo-id.pipe';
 import { AuthGuard } from '@nestjs/passport';
+import { AssignResponsibleOfficialDto } from './dto/assign-responsible-official.dto';
+import { AssignResponsibleOfficialBodyDto } from './dto/assign-responsible-official-body.dto';
 
 @ApiTags('Organigrama (Versiones)')
 @Controller('organigram-versions')
@@ -276,5 +278,23 @@ export class OrganigramVersionsController {
     @Param('versionId', ParseMongoIdPipe) versionId: string,
   ): Promise<OrganigramVersion> {
     return this.organigramVersionsService.deactivateVersion(versionId);
+  }
+
+  @Patch(':versionId/nodes/:nodeId/assign-official')
+  @ApiOperation({
+    summary: 'Asignar funcionario responsable a un nodo de departamento',
+  })
+  async assignResponsibleOfficialWithBody(
+    @Param('versionId', ParseMongoIdPipe) versionId: string,
+    @Param('nodeId', ParseMongoIdPipe) nodeId: string,
+    @Body() body: AssignResponsibleOfficialBodyDto,
+  ): Promise<OrganigramVersion> {
+    const dto: AssignResponsibleOfficialDto = {
+      versionId,
+      nodeId,
+      responsibleId: body.responsibleId,
+    };
+
+    return this.organigramVersionsService.assignResponsibleOfficial(dto);
   }
 }

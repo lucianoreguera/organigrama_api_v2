@@ -12,6 +12,7 @@ import {
 } from './entities/department-node.entity';
 import { DepartmentsModule } from '../departments/departments.module';
 import { LevelsModule } from '../levels/levels.module';
+import { PeopleModule } from '../people/people.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { LevelsModule } from '../levels/levels.module';
     ]),
     DepartmentsModule, // Para usar DepartmentsService
     LevelsModule, // Para usar LevelsService
+    PeopleModule, // Para usar PeopleService
   ],
   controllers: [OrganigramVersionsController],
   providers: [OrganigramVersionsService],
