@@ -27,7 +27,7 @@ import { QueryDepartmentDto } from './dto/query-department.dto';
 import { ParseMongoIdPipe } from '../common/pipes/parse-mongo-id.pipe';
 import { AuthGuard } from '@nestjs/passport';
 
-@ApiTags('Departmentos')
+@ApiTags('Departamentos')
 @Controller('departments')
 @UseGuards(AuthGuard('jwt'))
 @ApiBearerAuth('JWT-auth')

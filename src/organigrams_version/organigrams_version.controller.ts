@@ -67,6 +67,67 @@ export class OrganigramVersionsController {
     );
   }
 
+  @Get()
+  @ApiOperation({
+    summary: 'Obtener todas las versiones del organigrama',
+    description:
+      'Devuelve una lista con todas las versiones incluyendo version_tag, effective_date y _id',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de versiones obtenida exitosamente.',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          _id: {
+            type: 'string',
+            example: '507f1f77bcf86cd799439011',
+          },
+          version_tag: {
+            type: 'string',
+            example: 'v1.2.3',
+          },
+          effective_date: {
+            type: 'string',
+            format: 'date-time',
+            example: '2024-01-15T10:30:00.000Z',
+          },
+          isActive: {
+            type: 'boolean',
+            example: true,
+          },
+        },
+      },
+    },
+  })
+  @ApiQuery({
+    name: 'sortBy',
+    required: false,
+    description: 'Campo por el cual ordenar (effective_date, version_tag)',
+    example: 'effective_date',
+  })
+  @ApiQuery({
+    name: 'sortOrder',
+    required: false,
+    description: 'Orden de clasificación (asc, desc)',
+    example: 'desc',
+  })
+  async getAllVersions(
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+  ): Promise<
+    Array<{
+      _id: string;
+      version_tag: string;
+      effective_date: Date;
+      isActive: boolean;
+    }>
+  > {
+    return this.organigramVersionsService.getAllVersions(sortBy, sortOrder);
+  }
+
   @Get('active/structure')
   // @Roles(Role.ADMIN, Role.EDITOR, Role.VIEWER)
   @ApiOperation({

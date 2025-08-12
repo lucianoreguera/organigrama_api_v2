@@ -101,6 +101,39 @@ export class OrganigramVersionsService {
     }
   }
 
+  async getAllVersions(
+    sortBy: string = 'effective_date',
+    sortOrder: 'asc' | 'desc' = 'desc',
+  ): Promise<
+    Array<{
+      _id: string;
+      version_tag: string;
+      effective_date: Date;
+      isActive: boolean;
+    }>
+  > {
+    // Validar campos de ordenamiento permitidos
+    const allowedSortFields = ['effective_date', 'version_tag', 'createdAt'];
+    const sortField = allowedSortFields.includes(sortBy)
+      ? sortBy
+      : 'effective_date';
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+
+    const versions = await this.organigramVersionModel
+      .find()
+      .select('_id version_tag effective_date is_active createdAt')
+      .sort({ [sortField]: sortDirection })
+      .lean()
+      .exec();
+
+    return versions.map((version) => ({
+      _id: version._id.toString(),
+      version_tag: version.version_tag,
+      effective_date: version.effective_date,
+      isActive: version.is_active || false,
+    }));
+  }
+
   private async processNodeRecursive(
     nodes: DepartmentNodeInputDto[],
     versionId: Types.ObjectId,
