@@ -17,6 +17,14 @@ async function bootstrap() {
     }),
   );
   app.setGlobalPrefix('api/v2');
+
+  app.enableCors({
+    origin: true, // Permite cualquier origen
+    credentials: true, // Puede enviar cookies/tokens
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Permite métodos especificos
+    allowedHeaders: '*', //['Content-Type', 'Authorization'], // Permite encabezados especificos
+  });
+
   // Configuración de Swagger
   const config = new DocumentBuilder()
     .setTitle('Organigrama Municipal')
