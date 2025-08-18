@@ -1,5 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreatePersonDto } from './dto/create-person.dto';
@@ -8,13 +12,16 @@ import { Person } from './entities/person.entity';
 import { handleExceptions } from '../common/helpers/handle-exception';
 import { QueryPersonDto } from './dto/query-person.dto';
 import { PaginationService } from '../common/services/pagination.service';
+import { FileUploadService } from '../common/services/file-upload.service';
 
 @Injectable()
 export class PeopleService {
+  private readonly logger = new Logger(PeopleService.name);
   constructor(
     @InjectModel(Person.name)
     private readonly peopleModel: Model<Person>,
     private readonly paginationService: PaginationService,
+    private readonly fileUploadService: FileUploadService,
   ) {}
 
   async create(createPersonDto: CreatePersonDto) {
@@ -72,5 +79,29 @@ export class PeopleService {
     if (deletedCount === 0)
       throw new NotFoundException(`Person with id ${id} not found`);
     return;
+  }
+
+  async upload(id: string, photo: Express.Multer.File) {
+    const person = await this.findOne(id);
+    let photoUrlToUpdate: string | undefined | null = undefined;
+
+    try {
+      const cuilForFileName = person.cuil;
+      photoUrlToUpdate = await this.fileUploadService.uploadFile(
+        photo,
+        cuilForFileName,
+      );
+    } catch (uploadError) {
+      this.logger.error(
+        `Error al subir la nueva foto: ${uploadError.message}`,
+        uploadError.stack,
+      );
+      throw new InternalServerErrorException(
+        `Error al procesar la nueva foto: ${uploadError.message}`,
+      );
+    }
+    person.photo_url = photoUrlToUpdate;
+    await person.save();
+    return person;
   }
 }

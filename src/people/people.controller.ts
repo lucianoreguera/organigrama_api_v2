@@ -10,6 +10,11 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,6 +23,7 @@ import {
   ApiParam,
   ApiBody,
   ApiBearerAuth,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { PeopleService } from './people.service';
 import { CreatePersonDto } from './dto/create-person.dto';
@@ -27,6 +33,7 @@ import { PaginatedPeopleResponseDto } from './dto/paginated-people-response.dto'
 import { ParseMongoIdPipe } from '../common/pipes/parse-mongo-id.pipe';
 import { QueryPersonDto } from './dto/query-person.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Personas')
 @Controller('people')
@@ -247,5 +254,55 @@ export class PeopleController {
   })
   remove(@Param('id', ParseMongoIdPipe) id: string) {
     return this.peopleService.remove(id);
+  }
+
+  @Patch(':id/photo')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FileInterceptor('photo'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        photo: {
+          type: 'string',
+          format: 'binary',
+          description: 'Nuevo archivo de imagen.',
+          nullable: false,
+        },
+      },
+    },
+  })
+  @ApiOperation({
+    summary: 'Subir un archivo',
+    description: 'Sube un archivo a S3',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Archivo subido exitosamente',
+    type: String,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Datos de entrada inválidos',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token de autenticación requerido o inválido',
+  })
+  upload(
+    @Param('id', ParseMongoIdPipe) id: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: 'image/(jpeg|png|webp|gif)' }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    photo: Express.Multer.File,
+  ) {
+    return this.peopleService.upload(id, photo);
   }
 }
