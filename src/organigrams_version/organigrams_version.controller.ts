@@ -10,12 +10,17 @@ import {
   Param,
   Patch,
   Query,
+  Delete,
 } from '@nestjs/common';
 import { OrganigramVersionsService } from './organigrams_version.service';
 import {
   CreateOrganigramVersionDto,
   OrganigramNodeDto,
   OrganigramStructureResponseDto,
+  AssignResponsibleOfficialDto,
+  AssignResponsibleOfficialBodyDto,
+  AssignAssessorsBodyDto,
+  AssignAssessorsDto,
 } from './dto';
 import { OrganigramVersion } from './entities/organigram-version.entity';
 import {
@@ -34,8 +39,6 @@ import {
 // import { User } from '../users/entities/user.entity';
 import { ParseMongoIdPipe } from '../common/pipes/parse-mongo-id.pipe';
 import { AuthGuard } from '@nestjs/passport';
-import { AssignResponsibleOfficialDto } from './dto/assign-responsible-official.dto';
-import { AssignResponsibleOfficialBodyDto } from './dto/assign-responsible-official-body.dto';
 
 @ApiTags('Organigrama (Versiones)')
 @Controller('organigram-versions')
@@ -302,5 +305,140 @@ export class OrganigramVersionsController {
     };
 
     return this.organigramVersionsService.assignResponsibleOfficial(dto);
+  }
+
+  @Patch(':versionId/nodes/:nodeId/assign-assessors')
+  @ApiOperation({
+    summary: 'Asignar asesores a un nodo de departamento',
+    description:
+      'Reemplaza todos los asesores existentes con los nuevos asesores especificados',
+  })
+  @ApiParam({
+    name: 'versionId',
+    description: 'ID de la versión del organigrama',
+    example: '507f1f77bcf86cd799439011',
+  })
+  @ApiParam({
+    name: 'nodeId',
+    description: 'ID del nodo de departamento',
+    example: '507f1f77bcf86cd799439012',
+  })
+  @ApiBody({
+    type: AssignAssessorsBodyDto,
+    description: 'Lista de IDs de asesores a asignar',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Asesores asignados exitosamente',
+    type: OrganigramVersion,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Datos de entrada inválidos o persona no es asesor',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Versión, nodo o asesor no encontrado',
+  })
+  async assignAssessorsToNode(
+    @Param('versionId', ParseMongoIdPipe) versionId: string,
+    @Param('nodeId', ParseMongoIdPipe) nodeId: string,
+    @Body() body: AssignAssessorsBodyDto,
+  ): Promise<OrganigramVersion> {
+    const dto: AssignAssessorsDto = {
+      versionId,
+      nodeId,
+      assessorIds: body.assessorIds,
+    };
+
+    return this.organigramVersionsService.assignAssessors(dto);
+  }
+
+  @Patch(':versionId/nodes/:nodeId/add-assessors')
+  @ApiOperation({
+    summary: 'Agregar asesores adicionales a un nodo de departamento',
+    description:
+      'Agrega nuevos asesores a los ya existentes sin reemplazar. No permite duplicados.',
+  })
+  @ApiParam({
+    name: 'versionId',
+    description: 'ID de la versión del organigrama',
+    example: '507f1f77bcf86cd799439011',
+  })
+  @ApiParam({
+    name: 'nodeId',
+    description: 'ID del nodo de departamento',
+    example: '507f1f77bcf86cd799439012',
+  })
+  @ApiBody({
+    type: AssignAssessorsBodyDto,
+    description: 'Lista de IDs de asesores a agregar',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Asesores agregados exitosamente',
+    type: OrganigramVersion,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Datos de entrada inválidos o persona no es asesor',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Versión, nodo o asesor no encontrado',
+  })
+  async addAssessorsToNode(
+    @Param('versionId', ParseMongoIdPipe) versionId: string,
+    @Param('nodeId', ParseMongoIdPipe) nodeId: string,
+    @Body() body: AssignAssessorsBodyDto,
+  ): Promise<OrganigramVersion> {
+    const dto: AssignAssessorsDto = {
+      versionId,
+      nodeId,
+      assessorIds: body.assessorIds,
+    };
+
+    return this.organigramVersionsService.addAssessorsToNode(dto);
+  }
+
+  @Delete(':versionId/nodes/:nodeId/remove-assessors')
+  @ApiOperation({
+    summary: 'Remover asesores específicos de un nodo de departamento',
+    description:
+      'Remueve asesores específicos del nodo sin afectar otros asesores existentes',
+  })
+  @ApiParam({
+    name: 'versionId',
+    description: 'ID de la versión del organigrama',
+    example: '507f1f77bcf86cd799439011',
+  })
+  @ApiParam({
+    name: 'nodeId',
+    description: 'ID del nodo de departamento',
+    example: '507f1f77bcf86cd799439012',
+  })
+  @ApiBody({
+    type: AssignAssessorsBodyDto,
+    description: 'Lista de IDs de asesores a remover',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Asesores removidos exitosamente',
+    type: OrganigramVersion,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Versión o nodo no encontrado',
+  })
+  async removeAssessorsFromNode(
+    @Param('versionId', ParseMongoIdPipe) versionId: string,
+    @Param('nodeId', ParseMongoIdPipe) nodeId: string,
+    @Body() body: AssignAssessorsBodyDto,
+  ): Promise<OrganigramVersion> {
+    return this.organigramVersionsService.removeAssessorsFromNode(
+      versionId,
+      nodeId,
+      body.assessorIds,
+    );
   }
 }

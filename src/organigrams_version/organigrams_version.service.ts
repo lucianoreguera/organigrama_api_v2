@@ -13,13 +13,14 @@ import {
   DepartmentNodeInputDto,
   OrganigramNodeDto,
   OrganigramStructureResponseDto,
+  AssignAssessorsDto,
+  AssignResponsibleOfficialDto,
 } from './dto';
 import { OrganigramVersion } from './entities/organigram-version.entity';
 import { DepartmentNode } from './entities/department-node.entity';
 import { DepartmentsService } from '../departments/departments.service';
 import { LevelsService } from '../levels/levels.service';
 import { PeopleService } from '../people/people.service';
-import { AssignResponsibleOfficialDto } from './dto/assign-responsible-official.dto';
 
 interface FrontendToMongoIdMap {
   [frontendId: string]: Types.ObjectId;
@@ -830,6 +831,160 @@ export class OrganigramVersionsService {
     const result = await this.departmentNodeModel.updateOne(
       { _id: nodeId },
       { $set: { responsible_official: new Types.ObjectId(responsibleId) } },
+    );
+
+    if (result.matchedCount === 0) {
+      throw new NotFoundException(
+        `No se pudo actualizar el nodo con ID ${nodeId}`,
+      );
+    }
+  }
+
+  async assignAssessors(dto: AssignAssessorsDto): Promise<OrganigramVersion> {
+    const { versionId, assessorIds, nodeId } = dto;
+
+    // Validar existencia de entidades en paralelo
+    const [version, node, assessors] = await Promise.all([
+      this.validateVersionExists(versionId),
+      this.validateNodeExists(nodeId),
+      this.validateAssessors(assessorIds),
+    ]);
+
+    // Actualizar el nodo con los asesores
+    await this.updateNodeAssessors(nodeId, assessorIds);
+
+    this.logger.log(
+      `Asesores asignados exitosamente al nodo ${nodeId}: ${assessorIds.join(', ')}`,
+    );
+
+    return version;
+  }
+
+  private async validateAssessors(assessorIds: string[]): Promise<any[]> {
+    const assessors = await Promise.all(
+      assessorIds.map((id) => this.peopleService.findOne(id)),
+    );
+
+    // Validar que todas las personas existen
+    const notFound = assessorIds.filter((id, index) => !assessors[index]);
+    if (notFound.length > 0) {
+      throw new NotFoundException(
+        `Los siguientes asesores no fueron encontrados: ${notFound.join(', ')}`,
+      );
+    }
+
+    // Validar que todas las personas son asesores
+    const invalidTypes = assessors.filter(
+      (assessor) => assessor.person_type !== 'assessor',
+    );
+    if (invalidTypes.length > 0) {
+      const invalidIds = invalidTypes.map((assessor) =>
+        assessor._id?.toString(),
+      );
+      throw new BadRequestException(
+        `Las siguientes personas no tienen el tipo de asesor requerido: ${invalidIds.join(', ')}`,
+      );
+    }
+
+    return assessors;
+  }
+
+  private async updateNodeAssessors(
+    nodeId: string,
+    assessorIds: string[],
+  ): Promise<void> {
+    const objectIds = assessorIds.map((id) => new Types.ObjectId(id));
+
+    const result = await this.departmentNodeModel.updateOne(
+      { _id: nodeId },
+      { $set: { assigned_assessors: objectIds } },
+    );
+
+    if (result.matchedCount === 0) {
+      throw new NotFoundException(
+        `No se pudo actualizar el nodo con ID ${nodeId}`,
+      );
+    }
+  }
+
+  async addAssessorsToNode(
+    dto: AssignAssessorsDto,
+  ): Promise<OrganigramVersion> {
+    const { versionId, assessorIds, nodeId } = dto;
+
+    // Validar existencia de entidades en paralelo
+    const [version, node, assessors] = await Promise.all([
+      this.validateVersionExists(versionId),
+      this.validateNodeExists(nodeId),
+      this.validateAssessors(assessorIds),
+    ]);
+
+    // Agregar los asesores a los existentes (sin duplicados)
+    await this.addAssessorsToExisting(nodeId, assessorIds);
+
+    this.logger.log(
+      `Asesores agregados exitosamente al nodo ${nodeId}: ${assessorIds.join(', ')}`,
+    );
+
+    return version;
+  }
+
+  private async addAssessorsToExisting(
+    nodeId: string,
+    assessorIds: string[],
+  ): Promise<void> {
+    const objectIds = assessorIds.map((id) => new Types.ObjectId(id));
+
+    const result = await this.departmentNodeModel.updateOne(
+      { _id: nodeId },
+      {
+        $addToSet: {
+          assigned_assessors: { $each: objectIds },
+        },
+      },
+    );
+
+    if (result.matchedCount === 0) {
+      throw new NotFoundException(
+        `No se pudo actualizar el nodo con ID ${nodeId}`,
+      );
+    }
+  }
+
+  async removeAssessorsFromNode(
+    versionId: string,
+    nodeId: string,
+    assessorIds: string[],
+  ): Promise<OrganigramVersion> {
+    // Validar existencia de entidades
+    const [version, node] = await Promise.all([
+      this.validateVersionExists(versionId),
+      this.validateNodeExists(nodeId),
+    ]);
+
+    // Remover los asesores especificados
+    await this.removeAssessorsFromExisting(nodeId, assessorIds);
+
+    this.logger.log(
+      `Asesores removidos exitosamente del nodo ${nodeId}: ${assessorIds.join(', ')}`,
+    );
+
+    return version;
+  }
+
+  private async removeAssessorsFromExisting(
+    nodeId: string,
+    assessorIds: string[],
+  ): Promise<void> {
+    const objectIds = assessorIds.map((id) => new Types.ObjectId(id));
+
+    const result = await this.departmentNodeModel.updateOne(
+      { _id: nodeId },
+      {
+        $pull: {
+          assigned_assessors: { $in: objectIds },
+        },
+      },
     );
 
     if (result.matchedCount === 0) {
