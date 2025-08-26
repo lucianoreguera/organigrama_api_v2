@@ -187,29 +187,6 @@ export class OrganigramVersionsController {
     return this.organigramVersionsService.getActiveVersion();
   }
 
-  // @Get('node/:nodeId/descendants')
-  // // @Roles(Role.ADMIN, Role.EDITOR, Role.VIEWER)
-  // @ApiOperation({
-  //   summary:
-  //     'Obtener un nodo y todos sus descendientes en una estructura jerárquica.',
-  //   description:
-  //     'Dado el ID de un department_node, devuelve ese nodo con toda su descendencia anidada (hijos, nietos, etc.).',
-  // })
-  // @ApiParam({
-  //   name: 'nodeId',
-  //   description: 'ID del nodo de departamento (ObjectId de MongoDB)',
-  //   example: '507f1f77bcf86cd799439012',
-  // })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'Estructura de descendientes obtenida exitosamente.',
-  // })
-  // @ApiResponse({ status: 404, description: 'Nodo no encontrado.' })
-  // async getNodeWithDescendants(
-  //   @Param('nodeId', ParseMongoIdPipe) nodeId: string,
-  // ) {
-  //   return this.organigramVersionsService.getDescendantStructureForNode(nodeId);
-  // }
   @Get('node/:nodeId/descendants')
   @ApiOperation({
     summary:
@@ -235,23 +212,6 @@ export class OrganigramVersionsController {
     return this.organigramVersionsService.getDescendantStructureForNode(nodeId);
   }
 
-  // @Get('node/:nodeId/children')
-  // // @Roles(Role.ADMIN, Role.EDITOR, Role.VIEWER)
-  // @ApiOperation({
-  //   summary: 'Obtener solo los hijos directos de un nodo.',
-  // })
-  // @ApiParam({
-  //   name: 'nodeId',
-  //   description: 'ID del nodo de departamento',
-  //   example: '507f1f77bcf86cd799439012',
-  // })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'Hijos directos obtenidos exitosamente.',
-  // })
-  // async getDirectChildren(@Param('nodeId', ParseMongoIdPipe) nodeId: string) {
-  //   return this.organigramVersionsService.getDirectChildren(nodeId);
-  // }
   @Get('node/:nodeId/children')
   @ApiOperation({
     summary: 'Obtener solo los hijos directos de un nodo.',
@@ -272,23 +232,6 @@ export class OrganigramVersionsController {
     return this.organigramVersionsService.getDirectChildren(nodeId);
   }
 
-  // @Get(':versionId/level/:levelId/nodes')
-  // // @Roles(Role.ADMIN, Role.EDITOR, Role.VIEWER)
-  // @ApiOperation({
-  //   summary: 'Obtener todos los nodos de un nivel específico en una versión.',
-  // })
-  // @ApiParam({ name: 'versionId', description: 'ID de la versión' })
-  // @ApiParam({ name: 'levelId', description: 'ID del nivel' })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'Nodos del nivel obtenidos exitosamente.',
-  // })
-  // async getNodesByLevel(
-  //   @Param('versionId', ParseMongoIdPipe) versionId: string,
-  //   @Param('levelId', ParseMongoIdPipe) levelId: string,
-  // ) {
-  //   return this.organigramVersionsService.getNodesByLevel(versionId, levelId);
-  // }
   @Get(':versionId/level/:levelId/nodes')
   @ApiOperation({
     summary: 'Obtener todos los nodos de un nivel específico en una versión.',
