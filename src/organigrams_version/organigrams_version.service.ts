@@ -281,6 +281,230 @@ export class OrganigramVersionsService {
     return activeVersion;
   }
 
+  // async getOrganigramStructureByVersion(
+  //   versionId: string,
+  // ): Promise<OrganigramStructureResponseDto> {
+  //   this.logger.log(
+  //     `Obteniendo estructura de organigrama para versión: ${versionId}`,
+  //   );
+
+  //   try {
+  //     // Obtener la versión
+  //     const version = await this.organigramVersionModel.findById(versionId);
+  //     if (!version) {
+  //       throw new NotFoundException(
+  //         `No se encontró la versión del organigrama con ID: ${versionId}`,
+  //       );
+  //     }
+
+  //     // Obtener todos los nodos de la versión con populate
+  //     const nodes = await this.departmentNodeModel
+  //       .find({ version: new Types.ObjectId(versionId) })
+  //       .populate('department', 'name code objective')
+  //       .populate('level_id', 'name order')
+  //       .populate(
+  //         'responsible_official',
+  //         'firstname lastname person_type photo_url job_title_text',
+  //       )
+  //       .populate(
+  //         'assigned_assessors',
+  //         'firstname lastname person_type photo_url expertise_area',
+  //       )
+  //       .sort({ depth: 1, path: 1 }) // Ordenar por profundidad y path
+  //       .lean();
+
+  //     // Construir la estructura jerárquica
+  //     const hierarchicalNodes = this.buildHierarchicalStructure(nodes);
+
+  //     return {
+  //       version: {
+  //         id: (version._id as Types.ObjectId).toString(),
+  //         version_tag: version.version_tag,
+  //         effective_date: version.effective_date.toISOString(),
+  //         description: version.description,
+  //         is_active: version.is_active,
+  //         created_at: (version as any).createdAt.toISOString(),
+  //         updated_at: (version as any).updatedAt.toISOString(),
+  //       },
+  //       nodes: hierarchicalNodes,
+  //     };
+  //   } catch (error) {
+  //     this.logger.error(
+  //       `Error obteniendo estructura del organigrama: ${error.message}`,
+  //       error.stack,
+  //     );
+
+  //     if (error instanceof NotFoundException) {
+  //       throw error;
+  //     }
+
+  //     throw new InternalServerErrorException(
+  //       `Error interno al obtener la estructura del organigrama: ${error.message}`,
+  //     );
+  //   }
+  // }
+
+  // private buildHierarchicalStructure(nodes: any[]): OrganigramNodeDto[] {
+  //   this.logger.debug(
+  //     `Construyendo estructura jerárquica para ${nodes.length} nodos`,
+  //   );
+
+  //   if (!nodes || nodes.length === 0) {
+  //     this.logger.debug('Array de nodos vacío');
+  //     return [];
+  //   }
+
+  //   // Crear mapa de nodos por ID para acceso rápido
+  //   const nodeMap = new Map<string, OrganigramNodeDto>();
+  //   const rootNodes: OrganigramNodeDto[] = [];
+
+  //   this.logger.debug('Transformando nodos...');
+
+  //   // Transformar todos los nodos al formato de respuesta
+  //   for (let i = 0; i < nodes.length; i++) {
+  //     const node = nodes[i];
+
+  //     try {
+  //       this.logger.debug(
+  //         `Procesando nodo ${i}: ${JSON.stringify({
+  //           _id: node._id,
+  //           parent_node: node.parent_node,
+  //           department: node.department ? 'populated' : 'not populated',
+  //           level_id: node.level_id ? 'populated' : 'not populated',
+  //         })}`,
+  //       );
+
+  //       const transformedNode: OrganigramNodeDto = {
+  //         frontend_id: (node._id as Types.ObjectId).toString(),
+  //         parentId: node.parent_node
+  //           ? (node.parent_node as Types.ObjectId).toString()
+  //           : null,
+  //         department_data: {
+  //           name: (node.department as any)?.name || 'Sin nombre',
+  //           code: (node.department as any)?.code || '',
+  //           objective: (node.department as any)?.objective || '',
+  //         },
+  //         level_id: node.level_id
+  //           ? ((node.level_id as any)?._id as Types.ObjectId)?.toString() || ''
+  //           : '',
+  //         ui_hints: node.ui_hints || {},
+  //         children: [],
+  //       };
+
+  //       nodeMap.set((node._id as Types.ObjectId).toString(), transformedNode);
+
+  //       // Si es nodo raíz (sin parent_node)
+  //       if (!node.parent_node) {
+  //         rootNodes.push(transformedNode);
+  //         this.logger.debug(
+  //           `Nodo raíz agregado: ${transformedNode.frontend_id}`,
+  //         );
+  //       }
+  //     } catch (nodeError) {
+  //       this.logger.error(
+  //         `Error procesando nodo ${i}: ${nodeError.message}`,
+  //         JSON.stringify(node, null, 2),
+  //       );
+  //     }
+  //   }
+
+  //   this.logger.debug(
+  //     `Nodos transformados: ${nodeMap.size}, nodos raíz: ${rootNodes.length}`,
+  //   );
+
+  //   // Construir relaciones padre-hijo
+  //   for (const node of nodes) {
+  //     if (node.parent_node) {
+  //       const parentKey = (node.parent_node as Types.ObjectId).toString();
+  //       const childKey = (node._id as Types.ObjectId).toString();
+
+  //       const parent = nodeMap.get(parentKey);
+  //       const child = nodeMap.get(childKey);
+
+  //       if (parent && child) {
+  //         parent.children.push(child);
+  //         this.logger.debug(`Relación padre-hijo: ${parentKey} -> ${childKey}`);
+  //       } else {
+  //         this.logger.warn(
+  //           `No se pudo crear relación ${parentKey} -> ${childKey}. Parent: ${!!parent}, Child: ${!!child}`,
+  //         );
+  //       }
+  //     }
+  //   }
+
+  //   this.logger.log(
+  //     `Estructura jerárquica construida: ${rootNodes.length} nodos raíz, ${nodeMap.size} nodos totales`,
+  //   );
+
+  //   return rootNodes;
+  // }
+
+  // Consulta de descendientes usando Materialized Path
+  // async getDescendantStructureForNode(
+  //   nodeId: string,
+  // ): Promise<OrganigramNodeDto> {
+  //   this.logger.log(
+  //     `Obteniendo estructura de descendientes para el nodo: ${nodeId}`,
+  //   );
+
+  //   try {
+  //     // Primero obtener el nodo raíz
+  //     const rootNode = await this.departmentNodeModel
+  //       .findById(nodeId)
+  //       .populate('department', 'name code objective')
+  //       .populate('level_id', 'name order')
+  //       .lean();
+
+  //     if (!rootNode) {
+  //       throw new NotFoundException(`Nodo con ID ${nodeId} no encontrado.`);
+  //     }
+
+  //     // Obtener todos los descendientes usando el path
+  //     const descendants = await this.departmentNodeModel
+  //       .find({
+  //         version: rootNode.version,
+  //         path: { $regex: `^${rootNode.path}/` }, // Todos los que empiecen con el path del nodo + /
+  //       })
+  //       .populate('department', 'name code objective')
+  //       .populate('level_id', 'name order')
+  //       .sort({ depth: 1, path: 1 })
+  //       .lean();
+
+  //     // Combinar el nodo raíz con sus descendientes
+  //     const allNodes = [rootNode, ...descendants];
+
+  //     // Construir la estructura jerárquica
+  //     const hierarchicalNodes = this.buildHierarchicalStructure(allNodes);
+
+  //     if (!hierarchicalNodes || hierarchicalNodes.length === 0) {
+  //       throw new InternalServerErrorException(
+  //         `Error al construir la jerarquía para el nodo ${nodeId}`,
+  //       );
+  //     }
+
+  //     this.logger.log(
+  //       `Estructura de descendientes para ${nodeId} construida exitosamente.`,
+  //     );
+
+  //     return hierarchicalNodes[0]; // Retornar el nodo raíz con toda su descendencia
+  //   } catch (error) {
+  //     this.logger.error(
+  //       `Error obteniendo descendientes para el nodo ${nodeId}: ${error.message}`,
+  //       error.stack,
+  //     );
+
+  //     if (
+  //       error instanceof NotFoundException ||
+  //       error instanceof InternalServerErrorException
+  //     ) {
+  //       throw error;
+  //     }
+
+  //     throw new InternalServerErrorException(
+  //       `Error interno al procesar la solicitud de descendientes para el nodo ${nodeId}.`,
+  //     );
+  //   }
+  // }
   async getOrganigramStructureByVersion(
     versionId: string,
   ): Promise<OrganigramStructureResponseDto> {
@@ -297,13 +521,19 @@ export class OrganigramVersionsService {
         );
       }
 
-      // Obtener todos los nodos de la versión con populate
+      // Obtener todos los nodos de la versión con populate COMPLETO
       const nodes = await this.departmentNodeModel
         .find({ version: new Types.ObjectId(versionId) })
         .populate('department', 'name code objective')
         .populate('level_id', 'name order')
-        .populate('responsible_official', 'firstname lastname person_type')
-        .populate('assigned_assessors', 'firstname lastname person_type')
+        .populate(
+          'responsible_official',
+          'firstname lastname person_type photo_url job_title_text',
+        )
+        .populate(
+          'assigned_assessors',
+          'firstname lastname person_type photo_url expertise_area',
+        )
         .sort({ depth: 1, path: 1 }) // Ordenar por profundidad y path
         .lean();
 
@@ -383,6 +613,32 @@ export class OrganigramVersionsService {
             : '',
           ui_hints: node.ui_hints || {},
           children: [],
+
+          // *** DATOS DE PERSONAS ***
+          responsible_official: node.responsible_official
+            ? {
+                _id: (
+                  node.responsible_official._id as Types.ObjectId
+                ).toString(),
+                firstname: node.responsible_official.firstname,
+                lastname: node.responsible_official.lastname,
+                person_type: node.responsible_official.person_type,
+                photo_url: node.responsible_official.photo_url,
+                job_title_text: node.responsible_official.job_title_text,
+              }
+            : null,
+
+          assigned_assessors:
+            node.assigned_assessors && node.assigned_assessors.length > 0
+              ? node.assigned_assessors.map((assessor: any) => ({
+                  _id: (assessor._id as Types.ObjectId).toString(),
+                  firstname: assessor.firstname,
+                  lastname: assessor.lastname,
+                  person_type: assessor.person_type,
+                  photo_url: assessor.photo_url,
+                  expertise_area: assessor.expertise_area,
+                }))
+              : [],
         };
 
         nodeMap.set((node._id as Types.ObjectId).toString(), transformedNode);
@@ -430,10 +686,10 @@ export class OrganigramVersionsService {
       `Estructura jerárquica construida: ${rootNodes.length} nodos raíz, ${nodeMap.size} nodos totales`,
     );
 
+    // *** ESTE ERA EL RETURN QUE FALTABA ***
     return rootNodes;
   }
 
-  // Consulta de descendientes usando Materialized Path
   // async getDescendantStructureForNode(
   //   nodeId: string,
   // ): Promise<OrganigramNodeDto> {
@@ -453,34 +709,100 @@ export class OrganigramVersionsService {
   //       throw new NotFoundException(`Nodo con ID ${nodeId} no encontrado.`);
   //     }
 
+  //     this.logger.debug(`Nodo raíz encontrado para descendientes`);
+
   //     // Obtener todos los descendientes usando el path
   //     const descendants = await this.departmentNodeModel
   //       .find({
   //         version: rootNode.version,
-  //         path: { $regex: `^${rootNode.path}/` }, // Todos los que empiecen con el path del nodo + /
+  //         path: { $regex: `^${rootNode.path}/` },
   //       })
   //       .populate('department', 'name code objective')
   //       .populate('level_id', 'name order')
   //       .sort({ depth: 1, path: 1 })
   //       .lean();
 
-  //     // Combinar el nodo raíz con sus descendientes
-  //     const allNodes = [rootNode, ...descendants];
+  //     this.logger.debug(`Descendientes encontrados: ${descendants.length}`);
 
-  //     // Construir la estructura jerárquica
-  //     const hierarchicalNodes = this.buildHierarchicalStructure(allNodes);
+  //     // Construir el nodo raíz manualmente
+  //     const rootNodeFormatted: OrganigramNodeDto = {
+  //       frontend_id: (rootNode._id as Types.ObjectId).toString(),
+  //       parentId: null, // En contexto de descendientes, este es raíz
+  //       department_data: {
+  //         name: (rootNode.department as any)?.name || 'Sin nombre',
+  //         code: (rootNode.department as any)?.code || '',
+  //         objective: (rootNode.department as any)?.objective || '',
+  //       },
+  //       level_id: rootNode.level_id
+  //         ? ((rootNode.level_id as any)?._id as Types.ObjectId)?.toString() ||
+  //           ''
+  //         : '',
+  //       ui_hints: rootNode.ui_hints || {},
+  //       children: [],
+  //     };
 
-  //     if (!hierarchicalNodes || hierarchicalNodes.length === 0) {
-  //       throw new InternalServerErrorException(
-  //         `Error al construir la jerarquía para el nodo ${nodeId}`,
+  //     // Si no hay descendientes, devolver solo el nodo raíz
+  //     if (descendants.length === 0) {
+  //       this.logger.log(
+  //         `No hay descendientes para ${nodeId}, devolviendo solo el nodo raíz`,
   //       );
+  //       return rootNodeFormatted;
+  //     }
+
+  //     // Crear mapa para construcción de jerarquía
+  //     const nodeMap = new Map<string, OrganigramNodeDto>();
+  //     nodeMap.set(rootNodeFormatted.frontend_id, rootNodeFormatted);
+
+  //     // Procesar descendientes
+  //     for (const descendant of descendants) {
+  //       const descendantFormatted: OrganigramNodeDto = {
+  //         frontend_id: (descendant._id as Types.ObjectId).toString(),
+  //         parentId: descendant.parent_node
+  //           ? (descendant.parent_node as Types.ObjectId).toString()
+  //           : null,
+  //         department_data: {
+  //           name: (descendant.department as any)?.name || 'Sin nombre',
+  //           code: (descendant.department as any)?.code || '',
+  //           objective: (descendant.department as any)?.objective || '',
+  //         },
+  //         level_id: descendant.level_id
+  //           ? (
+  //               (descendant.level_id as any)?._id as Types.ObjectId
+  //             )?.toString() || ''
+  //           : '',
+  //         ui_hints: descendant.ui_hints || {},
+  //         children: [],
+  //       };
+
+  //       nodeMap.set(descendantFormatted.frontend_id, descendantFormatted);
+  //     }
+
+  //     // Construir relaciones padre-hijo
+  //     for (const descendant of descendants) {
+  //       const childKey = (descendant._id as Types.ObjectId).toString();
+  //       const parentKey = descendant.parent_node
+  //         ? (descendant.parent_node as Types.ObjectId).toString()
+  //         : null;
+
+  //       if (parentKey) {
+  //         const parent = nodeMap.get(parentKey);
+  //         const child = nodeMap.get(childKey);
+
+  //         if (parent && child) {
+  //           parent.children.push(child);
+  //           this.logger.debug(`Relación creada: ${parentKey} -> ${childKey}`);
+  //         } else {
+  //           this.logger.warn(
+  //             `No se pudo crear relación ${parentKey} -> ${childKey}`,
+  //           );
+  //         }
+  //       }
   //     }
 
   //     this.logger.log(
-  //       `Estructura de descendientes para ${nodeId} construida exitosamente.`,
+  //       `Estructura de descendientes construida exitosamente para ${nodeId}`,
   //     );
-
-  //     return hierarchicalNodes[0]; // Retornar el nodo raíz con toda su descendencia
+  //     return rootNodeFormatted;
   //   } catch (error) {
   //     this.logger.error(
   //       `Error obteniendo descendientes para el nodo ${nodeId}: ${error.message}`,
@@ -495,10 +817,12 @@ export class OrganigramVersionsService {
   //     }
 
   //     throw new InternalServerErrorException(
-  //       `Error interno al procesar la solicitud de descendientes para el nodo ${nodeId}.`,
+  //       `Error interno al procesar la solicitud de descendientes para el nodo ${nodeId}: ${error.message}`,
   //     );
   //   }
   // }
+
+  // Métodos adicionales útiles
   async getDescendantStructureForNode(
     nodeId: string,
   ): Promise<OrganigramNodeDto> {
@@ -512,13 +836,19 @@ export class OrganigramVersionsService {
         .findById(nodeId)
         .populate('department', 'name code objective')
         .populate('level_id', 'name order')
+        .populate(
+          'responsible_official',
+          'firstname lastname person_type photo_url job_title_text',
+        )
+        .populate(
+          'assigned_assessors',
+          'firstname lastname person_type photo_url expertise_area',
+        )
         .lean();
 
       if (!rootNode) {
         throw new NotFoundException(`Nodo con ID ${nodeId} no encontrado.`);
       }
-
-      this.logger.debug(`Nodo raíz encontrado para descendientes`);
 
       // Obtener todos los descendientes usando el path
       const descendants = await this.departmentNodeModel
@@ -528,15 +858,21 @@ export class OrganigramVersionsService {
         })
         .populate('department', 'name code objective')
         .populate('level_id', 'name order')
+        .populate(
+          'responsible_official',
+          'firstname lastname person_type photo_url job_title_text',
+        )
+        .populate(
+          'assigned_assessors',
+          'firstname lastname person_type photo_url expertise_area',
+        )
         .sort({ depth: 1, path: 1 })
         .lean();
-
-      this.logger.debug(`Descendientes encontrados: ${descendants.length}`);
 
       // Construir el nodo raíz manualmente
       const rootNodeFormatted: OrganigramNodeDto = {
         frontend_id: (rootNode._id as Types.ObjectId).toString(),
-        parentId: null, // En contexto de descendientes, este es raíz
+        parentId: null,
         department_data: {
           name: (rootNode.department as any)?.name || 'Sin nombre',
           code: (rootNode.department as any)?.code || '',
@@ -548,6 +884,34 @@ export class OrganigramVersionsService {
           : '',
         ui_hints: rootNode.ui_hints || {},
         children: [],
+
+        // *** AGREGAR DATOS DE PERSONAS ***
+        responsible_official: (rootNode as any).responsible_official
+          ? {
+              _id: (
+                (rootNode as any).responsible_official._id as Types.ObjectId
+              ).toString(),
+              firstname: (rootNode as any).responsible_official.firstname,
+              lastname: (rootNode as any).responsible_official.lastname,
+              person_type: (rootNode as any).responsible_official.person_type,
+              photo_url: (rootNode as any).responsible_official.photo_url,
+              job_title_text: (rootNode as any).responsible_official
+                .job_title_text,
+            }
+          : null,
+
+        assigned_assessors:
+          (rootNode as any).assigned_assessors &&
+          (rootNode as any).assigned_assessors.length > 0
+            ? (rootNode as any).assigned_assessors.map((assessor: any) => ({
+                _id: (assessor._id as Types.ObjectId).toString(),
+                firstname: assessor.firstname,
+                lastname: assessor.lastname,
+                person_type: assessor.person_type,
+                photo_url: assessor.photo_url,
+                expertise_area: assessor.expertise_area,
+              }))
+            : [],
       };
 
       // Si no hay descendientes, devolver solo el nodo raíz
@@ -581,6 +945,34 @@ export class OrganigramVersionsService {
             : '',
           ui_hints: descendant.ui_hints || {},
           children: [],
+
+          // *** AGREGAR DATOS DE PERSONAS ***
+          responsible_official: (rootNode as any).responsible_official
+            ? {
+                _id: (
+                  (rootNode as any).responsible_official._id as Types.ObjectId
+                ).toString(),
+                firstname: (rootNode as any).responsible_official.firstname,
+                lastname: (rootNode as any).responsible_official.lastname,
+                person_type: (rootNode as any).responsible_official.person_type,
+                photo_url: (rootNode as any).responsible_official.photo_url,
+                job_title_text: (rootNode as any).responsible_official
+                  .job_title_text,
+              }
+            : null,
+
+          assigned_assessors:
+            (rootNode as any).assigned_assessors &&
+            (rootNode as any).assigned_assessors.length > 0
+              ? (rootNode as any).assigned_assessors.map((assessor: any) => ({
+                  _id: (assessor._id as Types.ObjectId).toString(),
+                  firstname: assessor.firstname,
+                  lastname: assessor.lastname,
+                  person_type: assessor.person_type,
+                  photo_url: assessor.photo_url,
+                  expertise_area: assessor.expertise_area,
+                }))
+              : [],
         };
 
         nodeMap.set(descendantFormatted.frontend_id, descendantFormatted);
@@ -631,7 +1023,6 @@ export class OrganigramVersionsService {
     }
   }
 
-  // Métodos adicionales útiles
   async getNodesByLevel(
     versionId: string,
     levelId: string,
