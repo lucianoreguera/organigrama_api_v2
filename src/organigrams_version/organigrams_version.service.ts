@@ -295,11 +295,11 @@ export class OrganigramVersionsService {
         );
       }
 
-      // Obtener todos los nodos de la versión con populate COMPLETO
+      // Obtener todos los nodos de la versión con populate COMPLETO incluyendo level
       const nodes = await this.departmentNodeModel
         .find({ version: new Types.ObjectId(versionId) })
         .populate('department', 'name code objective')
-        .populate('level_id', 'name order')
+        .populate('level_id', 'name level') // *** INCLUIR 'level' EN EL POPULATE ***
         .populate(
           'responsible_official',
           'firstname lastname person_type photo_url job_title_text',
@@ -385,6 +385,7 @@ export class OrganigramVersionsService {
           level_id: node.level_id
             ? ((node.level_id as any)?._id as Types.ObjectId)?.toString() || ''
             : '',
+          level: (node.level_id as any)?.level || 0, // *** NUEVA PROPIEDAD ***
           ui_hints: node.ui_hints || {},
           children: [],
 
@@ -475,7 +476,7 @@ export class OrganigramVersionsService {
       const rootNode = await this.departmentNodeModel
         .findById(nodeId)
         .populate('department', 'name code objective')
-        .populate('level_id', 'name order')
+        .populate('level_id', 'name level') // *** INCLUIR 'level' ***
         .populate(
           'responsible_official',
           'firstname lastname person_type photo_url job_title_text',
@@ -497,7 +498,7 @@ export class OrganigramVersionsService {
           path: { $regex: `^${rootNode.path}/` },
         })
         .populate('department', 'name code objective')
-        .populate('level_id', 'name order')
+        .populate('level_id', 'name level') // *** INCLUIR 'level' ***
         .populate(
           'responsible_official',
           'firstname lastname person_type photo_url job_title_text',
@@ -522,6 +523,7 @@ export class OrganigramVersionsService {
           ? ((rootNode.level_id as any)?._id as Types.ObjectId)?.toString() ||
             ''
           : '',
+        level: (rootNode.level_id as any)?.level || 0, // *** NUEVA PROPIEDAD ***
         ui_hints: rootNode.ui_hints || {},
         children: [],
 
@@ -583,28 +585,30 @@ export class OrganigramVersionsService {
                 (descendant.level_id as any)?._id as Types.ObjectId
               )?.toString() || ''
             : '',
+          level: (descendant.level_id as any)?.level || 0, // *** NUEVA PROPIEDAD ***
           ui_hints: descendant.ui_hints || {},
           children: [],
 
           // *** AGREGAR DATOS DE PERSONAS ***
-          responsible_official: (rootNode as any).responsible_official
+          responsible_official: (descendant as any).responsible_official
             ? {
                 _id: (
-                  (rootNode as any).responsible_official._id as Types.ObjectId
+                  (descendant as any).responsible_official._id as Types.ObjectId
                 ).toString(),
-                firstname: (rootNode as any).responsible_official.firstname,
-                lastname: (rootNode as any).responsible_official.lastname,
-                person_type: (rootNode as any).responsible_official.person_type,
-                photo_url: (rootNode as any).responsible_official.photo_url,
-                job_title_text: (rootNode as any).responsible_official
+                firstname: (descendant as any).responsible_official.firstname,
+                lastname: (descendant as any).responsible_official.lastname,
+                person_type: (descendant as any).responsible_official
+                  .person_type,
+                photo_url: (descendant as any).responsible_official.photo_url,
+                job_title_text: (descendant as any).responsible_official
                   .job_title_text,
               }
             : null,
 
           assigned_assessors:
-            (rootNode as any).assigned_assessors &&
-            (rootNode as any).assigned_assessors.length > 0
-              ? (rootNode as any).assigned_assessors.map((assessor: any) => ({
+            (descendant as any).assigned_assessors &&
+            (descendant as any).assigned_assessors.length > 0
+              ? (descendant as any).assigned_assessors.map((assessor: any) => ({
                   _id: (assessor._id as Types.ObjectId).toString(),
                   firstname: assessor.firstname,
                   lastname: assessor.lastname,
@@ -673,7 +677,15 @@ export class OrganigramVersionsService {
         level_id: new Types.ObjectId(levelId),
       })
       .populate('department', 'name code objective')
-      .populate('level_id', 'name order')
+      .populate('level_id', 'name level') // *** INCLUIR 'level' ***
+      .populate(
+        'responsible_official',
+        'firstname lastname person_type photo_url job_title_text',
+      )
+      .populate(
+        'assigned_assessors',
+        'firstname lastname person_type photo_url expertise_area',
+      )
       .lean();
 
     return nodes.map((node) => ({
@@ -689,8 +701,36 @@ export class OrganigramVersionsService {
       level_id: node.level_id
         ? ((node.level_id as any)._id as Types.ObjectId).toString()
         : '',
+      level: (node.level_id as any)?.level || 0, // *** NUEVA PROPIEDAD ***
       ui_hints: node.ui_hints || {},
       children: [],
+
+      // *** DATOS DE PERSONAS ***
+      responsible_official: (node as any).responsible_official
+        ? {
+            _id: (
+              (node as any).responsible_official._id as Types.ObjectId
+            ).toString(),
+            firstname: (node as any).responsible_official.firstname,
+            lastname: (node as any).responsible_official.lastname,
+            person_type: (node as any).responsible_official.person_type,
+            photo_url: (node as any).responsible_official.photo_url,
+            job_title_text: (node as any).responsible_official.job_title_text,
+          }
+        : null,
+
+      assigned_assessors:
+        (node as any).assigned_assessors &&
+        (node as any).assigned_assessors.length > 0
+          ? (node as any).assigned_assessors.map((assessor: any) => ({
+              _id: (assessor._id as Types.ObjectId).toString(),
+              firstname: assessor.firstname,
+              lastname: assessor.lastname,
+              person_type: assessor.person_type,
+              photo_url: assessor.photo_url,
+              expertise_area: assessor.expertise_area,
+            }))
+          : [],
     }));
   }
 
@@ -698,7 +738,15 @@ export class OrganigramVersionsService {
     const children = await this.departmentNodeModel
       .find({ parent_node: new Types.ObjectId(nodeId) })
       .populate('department', 'name code objective')
-      .populate('level_id', 'name order')
+      .populate('level_id', 'name level') // *** INCLUIR 'level' ***
+      .populate(
+        'responsible_official',
+        'firstname lastname person_type photo_url job_title_text',
+      )
+      .populate(
+        'assigned_assessors',
+        'firstname lastname person_type photo_url expertise_area',
+      )
       .sort({ 'department.name': 1 })
       .lean();
 
@@ -715,8 +763,36 @@ export class OrganigramVersionsService {
       level_id: node.level_id
         ? ((node.level_id as any)._id as Types.ObjectId).toString()
         : '',
+      level: (node.level_id as any)?.level || 0, // *** NUEVA PROPIEDAD ***
       ui_hints: node.ui_hints || {},
       children: [],
+
+      // *** DATOS DE PERSONAS ***
+      responsible_official: (node as any).responsible_official
+        ? {
+            _id: (
+              (node as any).responsible_official._id as Types.ObjectId
+            ).toString(),
+            firstname: (node as any).responsible_official.firstname,
+            lastname: (node as any).responsible_official.lastname,
+            person_type: (node as any).responsible_official.person_type,
+            photo_url: (node as any).responsible_official.photo_url,
+            job_title_text: (node as any).responsible_official.job_title_text,
+          }
+        : null,
+
+      assigned_assessors:
+        (node as any).assigned_assessors &&
+        (node as any).assigned_assessors.length > 0
+          ? (node as any).assigned_assessors.map((assessor: any) => ({
+              _id: (assessor._id as Types.ObjectId).toString(),
+              firstname: assessor.firstname,
+              lastname: assessor.lastname,
+              person_type: assessor.person_type,
+              photo_url: assessor.photo_url,
+              expertise_area: assessor.expertise_area,
+            }))
+          : [],
     }));
   }
 

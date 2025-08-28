@@ -19,10 +19,11 @@ export class OrganigramNodeDto {
   parentId: string | null;
   department_data: DepartmentDataDto;
   level_id: string;
+  level: number;
   ui_hints?: Record<string, any>;
   children: OrganigramNodeDto[];
 
-  // Datos de personas - NUEVOS CAMPOS
+  // Datos de personas
   responsible_official?: PersonSummaryDto | null;
   assigned_assessors?: PersonSummaryDto[];
 }
