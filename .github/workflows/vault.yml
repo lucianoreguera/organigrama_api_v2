@@ -1,0 +1,89 @@
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  run_pull:
+    name: run pull
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Vault CLI
+        run: |
+          curl -fsSL https://releases.hashicorp.com/vault/1.15.0/vault_1.15.0_linux_amd64.zip -o vault.zip
+          unzip vault.zip
+          sudo mv vault /usr/local/bin/
+          vault --version
+
+      - name: Set Vault environment variables
+        run: |
+          echo "VAULT_ADDR=${{ secrets.VAULT_ADDR }}" >> $GITHUB_ENV
+          echo "VAULT_TOKEN=${{ secrets.VAULT_ROOT_TOKEN }}" >> $GITHUB_ENV
+
+      - name: Authenticate to Vault with Root Token
+        run: |
+          vault login ${{ secrets.VAULT_ROOT_TOKEN }}
+
+      - name: Read secret from Vault VARIABLES DEL PARA EL HOST (e.g., /kv/sistemas)
+        id: read_secret
+        run: |
+          host=$(vault kv get -mount="kv" -field=host sistemas)
+          port=$(vault kv get -mount="kv" -field=port sistemas)
+          user=$(vault kv get -mount="kv" -field=user sistemas)
+          pass=$(vault kv get -mount="kv" -field=pass sistemas)
+
+          echo "HOST=$host" >> $GITHUB_ENV
+          echo "PORT=$port" >> $GITHUB_ENV
+          echo "USER=$user" >> $GITHUB_ENV
+          echo "PASS=$pass" >> $GITHUB_ENV
+
+          echo "host=$host" >> $GITHUB_OUTPUT
+          echo "port=$port" >> $GITHUB_OUTPUT
+          echo "user=$user" >> $GITHUB_OUTPUT
+          echo "pass=$pass" >> $GITHUB_OUTPUT
+        
+      - name: Ejecutar comandos remotos por SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+            host: ${{ env.HOST }}
+            username: ${{ env.USER }}
+            password: ${{ env.PASS }}
+            port: ${{ env.PORT }}
+            script: |
+              echo "Downloading repository..."
+              
+              # Obtener nombre del repositorio (sin el owner)
+              echo "GITHUB_REPOSITORY=git@github.com:${{ github.repository }}.git"  
+              REPO_NAME=$(basename "${{ github.repository }}")   
+              echo "REPO_NAME=${REPO_NAME}"        
+              if [ ! -d "/home/${REPO_NAME}" ]; then
+                cd /home
+                git clone git@github.com:${{ github.repository }}.git
+              fi        
+              cd /home/${REPO_NAME}
+              git checkout main
+              git pull
+              echo "Repository downloaded successfully."            
+              docker stop organigrama_surrealdb || true
+              docker rm organigrama_surrealdb || true 
+              docker rmi organigrama_surrealdb:latest || true       
+              docker build -t organigrama_surrealdb:latest . 
+              docker run -d --restart=always \
+                -e APP_PORT='${{ secrets.APP_PORT }}' \
+                -e SURREAL_URL='${{ secrets.SURREAL_URL }}' \
+                -e SURREAL_USER='${{ secrets.SURREAL_USER }}' \
+                -e SURREAL_PASS='${{ secrets.SURREAL_PASS }}' \
+                -e SURREAL_NS='${{ secrets.SURREAL_NS }}' \
+                -e SURREAL_DB='${{ secrets.SURREAL_DB }}' \
+                -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+                -e JWT_EXPIRES_IN='${{ secrets.JWT_EXPIRES_IN }}' \
+                -e S3_API_URL='${{ secrets.S3_API_URL }}' \
+                -e S3_FOLDER='${{ secrets.S3_FOLDER }}' \
+                -e S3_API_KEY='${{ secrets.S3_API_KEY }}' \
+                -p 0.0.0.0:7053:3000 --name organigrama_surrealdb organigrama_surrealdb:latest
+              docker logs organigrama_surrealdb
+              exit
