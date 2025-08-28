@@ -31,29 +31,24 @@ jobs:
       - name: Read secret from Vault VARIABLES DEL PARA EL HOST (e.g., /kv/sistemas)
         id: read_secret
         run: |
-          host=$(vault kv get -mount="kv" -field=host sistemas)
-          port=$(vault kv get -mount="kv" -field=port sistemas)
-          user=$(vault kv get -mount="kv" -field=user sistemas)
-          pass=$(vault kv get -mount="kv" -field=pass sistemas)
+          echo "::add-mask::$(vault kv get -mount=kv -field=host sistemas)"
+          echo "::add-mask::$(vault kv get -mount=kv -field=port sistemas)"
+          echo "::add-mask::$(vault kv get -mount=kv -field=user sistemas)"
+          echo "::add-mask::$(vault kv get -mount=kv -field=pass sistemas)"
 
-          echo "HOST=$host" >> $GITHUB_ENV
-          echo "PORT=$port" >> $GITHUB_ENV
-          echo "USER=$user" >> $GITHUB_ENV
-          echo "PASS=$pass" >> $GITHUB_ENV
-
-          echo "host=$host" >> $GITHUB_OUTPUT
-          echo "port=$port" >> $GITHUB_OUTPUT
-          echo "user=$user" >> $GITHUB_OUTPUT
-          echo "pass=$pass" >> $GITHUB_OUTPUT
+          echo "host=$(vault kv get -mount=kv -field=host sistemas)" >> $GITHUB_OUTPUT
+          echo "port=$(vault kv get -mount=kv -field=port sistemas)" >> $GITHUB_OUTPUT
+          echo "user=$(vault kv get -mount=kv -field=user sistemas)" >> $GITHUB_OUTPUT
+          echo "pass=$(vault kv get -mount=kv -field=pass sistemas)" >> $GITHUB_OUTPUT
         
       - name: Ejecutar comandos remotos por SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
-            host: ${{ env.HOST }}
-            username: ${{ env.USER }}
-            password: ${{ env.PASS }}
-            port: ${{ env.PORT }}
-            script: |
+            host: ${{ steps.read_secret.outputs.host }}
+            username: ${{ steps.read_secret.outputs.user }}
+            password: ${{ steps.read_secret.outputs.pass }}
+            port: ${{ steps.read_secret.outputs.port }}
+            script: | 
               echo "Downloading repository..."
               
               # Obtener nombre del repositorio (sin el owner)
@@ -73,14 +68,14 @@ jobs:
               docker rmi organigrama_surrealdb:latest || true       
               docker build -t organigrama_surrealdb:latest . 
               docker run -d --restart=always \
-                -e APP_PORT='${{ secrets.APP_PORT }}' \
-                -e SURREAL_URL='${{ secrets.SURREAL_URL }}' \
-                -e SURREAL_USER='${{ secrets.SURREAL_USER }}' \
-                -e SURREAL_PASS='${{ secrets.SURREAL_PASS }}' \
-                -e SURREAL_NS='${{ secrets.SURREAL_NS }}' \
-                -e SURREAL_DB='${{ secrets.SURREAL_DB }}' \
-                -e JWT_SECRET='${{ secrets.JWT_SECRET }}' \
-                -e JWT_EXPIRES_IN='${{ secrets.JWT_EXPIRES_IN }}' \
+                -e MONGODB='${{ secrets.MONGODB }}' \
+                -e PORT='${{ secrets.PORT }}' \
+                -e KEYCLOAK_BASE_URL='${{ secrets.KEYCLOAK_BASE_URL }}' \
+                -e KEYCLOAK_REALM='${{ secrets.KEYCLOAK_REALM }}' \
+                -e KEYCLOAK_CLIENT_ID='${{ secrets.KEYCLOAK_CLIENT_ID }}' \
+                -e KEYCLOAK_CLIENT_SECRET='${{ secrets.KEYCLOAK_CLIENT_SECRET }}' \
+                -e KEYCLOAK_ADMIN_USERNAME='${{ secrets.KEYCLOAK_ADMIN_USERNAME }}' \
+                -e KEYCLOAK_ADMIN_PASSWORD='${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}' \
                 -e S3_API_URL='${{ secrets.S3_API_URL }}' \
                 -e S3_FOLDER='${{ secrets.S3_FOLDER }}' \
                 -e S3_API_KEY='${{ secrets.S3_API_KEY }}' \
