@@ -14,6 +14,12 @@ export class LevelResponseDto {
   name: string;
 
   @ApiProperty({
+    description: 'Número del nivel',
+    example: 1,
+  })
+  level: number;
+
+  @ApiProperty({
     description: 'Descripción del nivel',
     example: 'Nivel ideal para personas que están comenzando a aprender',
   })

@@ -24,32 +24,6 @@ export class LevelsService {
     }
   }
 
-  // async findAll(queryPaginateDto: QueryPaginateDto) {
-  //   const { search, limit, offset, sort } = queryPaginateDto;
-  //   const filters: any = {};
-
-  //   if (search) {
-  //     const searchRegex = new RegExp(search, 'i');
-  //     filters.$or = [{ name: searchRegex }];
-  //   }
-
-  //   const mongooseQuery = this.levelModel.find(filters);
-  //   mongooseQuery.select('-__v');
-
-  //   if (limit) {
-  //     mongooseQuery.limit(limit);
-  //   }
-
-  //   if (offset) {
-  //     mongooseQuery.skip(offset);
-  //   }
-
-  //   if (sort) {
-  //     mongooseQuery.sort(sort.replace(/,/g, ' '));
-  //   }
-
-  //   return mongooseQuery.exec();
-  // }
   async findAll(queryLevelDto: QueryLevelDto) {
     // Si hay filtros específicos para levels, se agrega aquí:
     const baseFilters: any = {};
