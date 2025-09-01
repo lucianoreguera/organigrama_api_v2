@@ -44,7 +44,7 @@ async function bootstrap() {
       'JWT-auth', // Este nombre se usa en los decoradores
     )
     .addServer('http://localhost:3000', 'Desarrollo')
-    .addServer('https://apis.v1.cc.gob.ar/organigrama_surrealdb', 'Producción')
+    .addServer('https://apis.v1.cc.gob.ar/api_organigrama', 'Producción')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
