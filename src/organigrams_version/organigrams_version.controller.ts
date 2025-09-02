@@ -49,27 +49,93 @@ export class OrganigramVersionsController {
     private readonly organigramVersionsService: OrganigramVersionsService,
   ) {}
 
+  // @Post()
+  // // @Roles(Role.ADMIN, Role.EDITOR)
+  // @HttpCode(HttpStatus.CREATED)
+  // @ApiOperation({
+  //   summary:
+  //     'Crear una nueva versión del organigrama a partir de una estructura de árbol JSON.',
+  // })
+  // @ApiResponse({
+  //   status: 201,
+  //   description: 'Versión del organigrama creada exitosamente.',
+  //   type: OrganigramVersion,
+  // })
+  // @ApiResponse({ status: 400, description: 'Datos de entrada inválidos.' })
+  // @ApiBody({ type: CreateOrganigramVersionDto })
+  // async createNewVersion(
+  //   @Body() createOrganigramVersionDto: CreateOrganigramVersionDto,
+  //   @Request() req?: any, // Opcional hasta integrar Keycloak
+  // ): Promise<OrganigramVersion> {
+  //   return this.organigramVersionsService.processAndCreateVersion(
+  //     createOrganigramVersionDto,
+  //     req?.user, // Puede ser undefined
+  //   );
+  // }
   @Post()
-  // @Roles(Role.ADMIN, Role.EDITOR)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary:
-      'Crear una nueva versión del organigrama a partir de una estructura de árbol JSON.',
+      'Crear una nueva versión del organigrama con asignaciones de personal',
+    description: `
+    Crea una nueva versión del organigrama a partir de una estructura JSON.
+    
+    NOVEDADES:
+    - Soporte para archivo de decreto PDF
+    - Asignación directa de funcionarios responsables y asesores durante la creación
+    - Validación mejorada de departamentos que permite nombres duplicados en diferentes contextos jerárquicos
+    
+    VALIDACIÓN DE DEPARTAMENTOS:
+    1. Busca por nombre + código (si ambos están presentes)
+    2. Busca por contexto jerárquico (nombre + nivel + ubicación en la estructura)
+    3. Crea nuevo departamento si no existe
+    
+    ASIGNACIÓN DE PERSONAS:
+    - responsible_official_id: debe ser una persona con person_type = 'OFFICIAL'
+    - assigned_assessor_ids: array de personas con person_type = 'ASSESSOR'
+  `,
   })
   @ApiResponse({
     status: 201,
-    description: 'Versión del organigrama creada exitosamente.',
+    description:
+      'Versión del organigrama creada exitosamente con asignaciones de personal.',
     type: OrganigramVersion,
   })
-  @ApiResponse({ status: 400, description: 'Datos de entrada inválidos.' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Datos de entrada inválidos, archivo de decreto no válido, o tipos de persona incorrectos.',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: [
+          'decree_file_id debe ser un ObjectId válido',
+          'La persona con ID xxx no es un funcionario (tipo requerido: OFFICIAL)',
+          'Las siguientes personas no son asesores: yyy, zzz',
+        ],
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Archivo de decreto, funcionario o asesor no encontrado.',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Los siguientes asesores no fueron encontrados: xxx, yyy',
+        error: 'Not Found',
+      },
+    },
+  })
   @ApiBody({ type: CreateOrganigramVersionDto })
   async createNewVersion(
     @Body() createOrganigramVersionDto: CreateOrganigramVersionDto,
-    @Request() req?: any, // Opcional hasta integrar Keycloak
+    @Request() req?: any,
   ): Promise<OrganigramVersion> {
     return this.organigramVersionsService.processAndCreateVersion(
       createOrganigramVersionDto,
-      req?.user, // Puede ser undefined
+      req?.user,
     );
   }
 

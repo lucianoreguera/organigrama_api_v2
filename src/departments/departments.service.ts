@@ -87,4 +87,29 @@ export class DepartmentsService {
   async findByCode(code: string) {
     return await this.departmentModel.findOne({ code: code.toLowerCase() });
   }
+
+  async findByNameAndCode(
+    name: string,
+    code: string,
+  ): Promise<Department | null> {
+    return await this.departmentModel.findOne({
+      name: name.toLowerCase(),
+      code: code?.toLowerCase(),
+    });
+  }
+
+  async findByHierarchicalContext(
+    name: string,
+    levelId: string,
+    hierarchicalPath: string,
+  ): Promise<Department | null> {
+    // Implementar lógica para encontrar departamento por contexto jerárquico
+    // Esto podría involucrar metadatos adicionales en el modelo Department
+
+    return await this.departmentModel.findOne({
+      name: name.toLowerCase(),
+      hierarchical_context: hierarchicalPath,
+      // Podrías agregar más criterios según tus necesidades
+    });
+  }
 }
