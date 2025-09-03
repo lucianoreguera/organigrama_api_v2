@@ -11,6 +11,11 @@ import {
   Patch,
   Query,
   Delete,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
+  UseInterceptors,
 } from '@nestjs/common';
 import { OrganigramVersionsService } from './organigrams_version.service';
 import {
@@ -31,6 +36,7 @@ import {
   ApiBearerAuth,
   ApiParam,
   ApiQuery,
+  ApiConsumes,
 } from '@nestjs/swagger';
 // import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 // import { RolesGuard } from '../auth/guards/roles.guard';
@@ -39,6 +45,7 @@ import {
 // import { User } from '../users/entities/user.entity';
 import { ParseMongoIdPipe } from '../common/pipes/parse-mongo-id.pipe';
 import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Organigrama (Versiones)')
 @Controller('organigram-versions')
@@ -80,8 +87,7 @@ export class OrganigramVersionsController {
     description: `
     Crea una nueva versión del organigrama a partir de una estructura JSON.
     
-    NOVEDADES:
-    - Soporte para archivo de decreto PDF
+    FUNCIONALIDADES:
     - Asignación directa de funcionarios responsables y asesores durante la creación
     - Validación mejorada de departamentos que permite nombres duplicados en diferentes contextos jerárquicos
     
@@ -95,21 +101,20 @@ export class OrganigramVersionsController {
     - assigned_assessor_ids: array de personas con person_type = 'ASSESSOR'
   `,
   })
+  @ApiBody({ type: CreateOrganigramVersionDto })
   @ApiResponse({
     status: 201,
-    description:
-      'Versión del organigrama creada exitosamente con asignaciones de personal.',
+    description: 'Versión del organigrama creada exitosamente.',
     type: OrganigramVersion,
   })
   @ApiResponse({
     status: 400,
-    description:
-      'Datos de entrada inválidos, archivo de decreto no válido, o tipos de persona incorrectos.',
+    description: 'Datos de entrada inválidos o tipos de persona incorrectos.',
     schema: {
       example: {
         statusCode: 400,
         message: [
-          'decree_file_id debe ser un ObjectId válido',
+          'La estructura de nodos no puede estar vacía.',
           'La persona con ID xxx no es un funcionario (tipo requerido: OFFICIAL)',
           'Las siguientes personas no son asesores: yyy, zzz',
         ],
@@ -119,7 +124,7 @@ export class OrganigramVersionsController {
   })
   @ApiResponse({
     status: 404,
-    description: 'Archivo de decreto, funcionario o asesor no encontrado.',
+    description: 'Funcionario o asesor no encontrado.',
     schema: {
       example: {
         statusCode: 404,
@@ -128,17 +133,77 @@ export class OrganigramVersionsController {
       },
     },
   })
-  @ApiBody({ type: CreateOrganigramVersionDto })
   async createNewVersion(
     @Body() createOrganigramVersionDto: CreateOrganigramVersionDto,
     @Request() req?: any,
   ): Promise<OrganigramVersion> {
     return this.organigramVersionsService.processAndCreateVersion(
       createOrganigramVersionDto,
+      undefined, // sin archivo de decreto
       req?.user,
     );
   }
 
+  // @Get()
+  // @ApiOperation({
+  //   summary: 'Obtener todas las versiones del organigrama',
+  //   description:
+  //     'Devuelve una lista con todas las versiones incluyendo version_tag, effective_date y _id',
+  // })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Lista de versiones obtenida exitosamente.',
+  //   schema: {
+  //     type: 'array',
+  //     items: {
+  //       type: 'object',
+  //       properties: {
+  //         _id: {
+  //           type: 'string',
+  //           example: '507f1f77bcf86cd799439011',
+  //         },
+  //         version_tag: {
+  //           type: 'string',
+  //           example: 'v1.2.3',
+  //         },
+  //         effective_date: {
+  //           type: 'string',
+  //           format: 'date-time',
+  //           example: '2024-01-15T10:30:00.000Z',
+  //         },
+  //         isActive: {
+  //           type: 'boolean',
+  //           example: true,
+  //         },
+  //       },
+  //     },
+  //   },
+  // })
+  // @ApiQuery({
+  //   name: 'sortBy',
+  //   required: false,
+  //   description: 'Campo por el cual ordenar (effective_date, version_tag)',
+  //   example: 'effective_date',
+  // })
+  // @ApiQuery({
+  //   name: 'sortOrder',
+  //   required: false,
+  //   description: 'Orden de clasificación (asc, desc)',
+  //   example: 'desc',
+  // })
+  // async getAllVersions(
+  //   @Query('sortBy') sortBy?: string,
+  //   @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+  // ): Promise<
+  //   Array<{
+  //     _id: string;
+  //     version_tag: string;
+  //     effective_date: Date;
+  //     isActive: boolean;
+  //   }>
+  // > {
+  //   return this.organigramVersionsService.getAllVersions(sortBy, sortOrder);
+  // }
   @Get()
   @ApiOperation({
     summary: 'Obtener todas las versiones del organigrama',
@@ -170,6 +235,12 @@ export class OrganigramVersionsController {
             type: 'boolean',
             example: true,
           },
+          decree_file_url: {
+            type: 'string',
+            example: 'https://s3.amazonaws.com/bucket/decreto-v1.2.3.pdf',
+            description: 'URL del archivo de decreto si existe',
+            nullable: true,
+          },
         },
       },
     },
@@ -195,13 +266,28 @@ export class OrganigramVersionsController {
       version_tag: string;
       effective_date: Date;
       isActive: boolean;
+      decree_file_url?: string;
     }>
   > {
     return this.organigramVersionsService.getAllVersions(sortBy, sortOrder);
   }
 
+  // @Get('active/structure')
+  // // @Roles(Role.ADMIN, Role.EDITOR, Role.VIEWER)
+  // @ApiOperation({
+  //   summary:
+  //     'Obtener la estructura completa de la versión activa del organigrama',
+  // })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Estructura del organigrama activo obtenida exitosamente.',
+  //   type: OrganigramStructureResponseDto,
+  // })
+  // @ApiResponse({ status: 404, description: 'No se encontró versión activa.' })
+  // async getActiveOrganigramStructure(): Promise<OrganigramStructureResponseDto> {
+  //   return this.organigramVersionsService.getActiveOrganigramStructure();
+  // }
   @Get('active/structure')
-  // @Roles(Role.ADMIN, Role.EDITOR, Role.VIEWER)
   @ApiOperation({
     summary:
       'Obtener la estructura completa de la versión activa del organigrama',
@@ -216,8 +302,31 @@ export class OrganigramVersionsController {
     return this.organigramVersionsService.getActiveOrganigramStructure();
   }
 
+  // @Get(':versionId/structure')
+  // // @Roles(Role.ADMIN, Role.EDITOR, Role.VIEWER)
+  // @ApiOperation({
+  //   summary:
+  //     'Obtener la estructura completa de una versión específica del organigrama',
+  // })
+  // @ApiParam({
+  //   name: 'versionId',
+  //   description: 'ID de la versión del organigrama (ObjectId de MongoDB)',
+  //   example: '507f1f77bcf86cd799439011',
+  // })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Estructura del organigrama obtenida exitosamente.',
+  //   type: OrganigramStructureResponseDto,
+  // })
+  // @ApiResponse({ status: 404, description: 'Versión no encontrada.' })
+  // async getOrganigramStructureByVersion(
+  //   @Param('versionId', ParseMongoIdPipe) versionId: string,
+  // ): Promise<OrganigramStructureResponseDto> {
+  //   return this.organigramVersionsService.getOrganigramStructureByVersion(
+  //     versionId,
+  //   );
+  // }
   @Get(':versionId/structure')
-  // @Roles(Role.ADMIN, Role.EDITOR, Role.VIEWER)
   @ApiOperation({
     summary:
       'Obtener la estructura completa de una versión específica del organigrama',
@@ -241,8 +350,21 @@ export class OrganigramVersionsController {
     );
   }
 
+  // @Get('active')
+  // // @Roles(Role.ADMIN, Role.EDITOR, Role.VIEWER)
+  // @ApiOperation({
+  //   summary: 'Obtener información básica de la versión activa del organigrama',
+  // })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Versión activa obtenida exitosamente.',
+  //   type: OrganigramVersion,
+  // })
+  // @ApiResponse({ status: 404, description: 'No se encontró versión activa.' })
+  // async getActiveVersion(): Promise<OrganigramVersion> {
+  //   return this.organigramVersionsService.getActiveVersion();
+  // }
   @Get('active')
-  // @Roles(Role.ADMIN, Role.EDITOR, Role.VIEWER)
   @ApiOperation({
     summary: 'Obtener información básica de la versión activa del organigrama',
   })
@@ -321,8 +443,23 @@ export class OrganigramVersionsController {
     return this.organigramVersionsService.getNodesByLevel(versionId, levelId);
   }
 
+  // @Patch(':versionId/activate')
+  // // @Roles(Role.ADMIN)
+  // @ApiOperation({
+  //   summary: 'Activar una versión específica del organigrama.',
+  // })
+  // @ApiParam({ name: 'versionId', description: 'ID de la versión a activar' })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: 'Versión activada exitosamente.',
+  //   type: OrganigramVersion,
+  // })
+  // async activateVersion(
+  //   @Param('versionId', ParseMongoIdPipe) versionId: string,
+  // ): Promise<OrganigramVersion> {
+  //   return this.organigramVersionsService.activateVersion(versionId);
+  // }
   @Patch(':versionId/activate')
-  // @Roles(Role.ADMIN)
   @ApiOperation({
     summary: 'Activar una versión específica del organigrama.',
   })
@@ -505,6 +642,75 @@ export class OrganigramVersionsController {
       versionId,
       nodeId,
       body.assessorIds,
+    );
+  }
+
+  @Patch(':versionId/decree')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FileInterceptor('decree_file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Subir archivo de decreto a una versión existente',
+    description:
+      'Permite agregar o actualizar el archivo PDF del decreto que autoriza una versión del organigrama ya creada.',
+  })
+  @ApiParam({
+    name: 'versionId',
+    description: 'ID de la versión del organigrama (ObjectId de MongoDB)',
+    example: '507f1f77bcf86cd799439011',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        decree_file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Archivo PDF del decreto que autoriza la versión',
+        },
+      },
+      required: ['decree_file'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Decreto subido exitosamente.',
+    type: OrganigramVersion,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Archivo inválido o ID de MongoDB inválido.',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: [
+          'El archivo de decreto debe ser un PDF',
+          'El archivo no puede exceder 10MB',
+        ],
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Versión no encontrada.',
+  })
+  async uploadDecree(
+    @Param('versionId', ParseMongoIdPipe) versionId: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB
+          new FileTypeValidator({ fileType: 'application/pdf' }),
+        ],
+        fileIsRequired: true,
+      }),
+    )
+    decree_file: Express.Multer.File,
+  ): Promise<OrganigramVersion> {
+    return this.organigramVersionsService.uploadDecreeToVersion(
+      versionId,
+      decree_file,
     );
   }
 }

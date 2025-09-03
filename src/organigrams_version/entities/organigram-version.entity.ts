@@ -77,13 +77,12 @@ export class OrganigramVersion extends Document {
   @Prop()
   description?: string;
 
-  // NUEVO CAMPO PARA DECRETO
+  // ALMACENAR DIRECTAMENTE LA URL DEL ARCHIVO DE DECRETO
   @Prop({
-    type: Types.ObjectId,
-    ref: 'File', // Asumiendo que tienes un modelo File para archivos
+    type: String,
     default: null,
   })
-  decree_file?: Types.ObjectId | null;
+  decree_file_url?: string | null;
 
   @Prop({
     type: Types.ObjectId,

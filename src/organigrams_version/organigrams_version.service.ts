@@ -22,6 +22,7 @@ import { DepartmentsService } from '../departments/departments.service';
 import { LevelsService } from '../levels/levels.service';
 import { PeopleService } from '../people/people.service';
 import { CreateDepartmentDto } from '../departments/dto/create-department.dto';
+import { FileUploadService } from '../common/services/file-upload.service';
 
 interface FrontendToMongoIdMap {
   [frontendId: string]: Types.ObjectId;
@@ -39,23 +40,31 @@ export class OrganigramVersionsService {
     private readonly departmentsService: DepartmentsService,
     private readonly levelsService: LevelsService,
     private readonly peopleService: PeopleService,
+    private readonly fileUploadService: FileUploadService,
   ) {}
 
   // async processAndCreateVersion(
   //   dto: CreateOrganigramVersionDto,
-  //   requestingUser?: any, // Opcional por ahora hasta que integres Keycloak
+  //   requestingUser?: any,
   // ): Promise<OrganigramVersion> {
   //   this.logger.log(
   //     `Iniciando procesamiento para nueva versión del organigrama: ${dto.version_tag}`,
   //   );
 
   //   try {
-  //     // 1. Crear la nueva versión (esto desactivará automáticamente las anteriores por el middleware)
+  //     // 1. Validar archivo de decreto si se proporciona
+  //     if (dto.decree_file_id) {
+  //       await this.validateDecreeFile(dto.decree_file_id);
+  //     }
+
+  //     // 2. Crear la nueva versión con decreto
   //     const newVersionData = {
   //       version_tag: dto.version_tag,
   //       effective_date: new Date(dto.effective_date),
   //       description: dto.description,
-  //       // created_by: requestingUser ? new Types.ObjectId(requestingUser._id) : undefined, // Comentado por ahora
+  //       decree_file: dto.decree_file_id
+  //         ? new Types.ObjectId(dto.decree_file_id)
+  //         : null,
   //       is_active: true,
   //       raw_input_tree: this.cleanObjectForSerialization({
   //         nodes: dto.nodes,
@@ -69,12 +78,11 @@ export class OrganigramVersionsService {
 
   //     const createdVersion =
   //       await this.organigramVersionModel.create(newVersionData);
-
   //     this.logger.log(`Nueva versión creada: ${createdVersion._id}`);
 
-  //     // 2. Procesar nodos del árbol
+  //     // 3. Procesar nodos del árbol con asignación de personas
   //     const frontendIdToMongoIdMap: FrontendToMongoIdMap = {};
-  //     await this.processNodeRecursive(
+  //     await this.processNodeRecursiveWithPeople(
   //       dto.nodes,
   //       createdVersion._id as Types.ObjectId,
   //       null,
@@ -82,7 +90,6 @@ export class OrganigramVersionsService {
   //     );
 
   //     this.logger.log('Procesamiento completado exitosamente.');
-
   //     return createdVersion;
   //   } catch (error) {
   //     this.logger.error(
@@ -104,6 +111,7 @@ export class OrganigramVersionsService {
   // }
   async processAndCreateVersion(
     dto: CreateOrganigramVersionDto,
+    decree_file?: Express.Multer.File,
     requestingUser?: any,
   ): Promise<OrganigramVersion> {
     this.logger.log(
@@ -111,9 +119,34 @@ export class OrganigramVersionsService {
     );
 
     try {
-      // 1. Validar archivo de decreto si se proporciona
-      if (dto.decree_file_id) {
-        await this.validateDecreeFile(dto.decree_file_id);
+      let decree_file_url: string | undefined = undefined;
+
+      // 1. Subir archivo de decreto si se proporciona
+      if (decree_file) {
+        try {
+          this.logger.log(
+            `Subiendo archivo de decreto para versión: ${dto.version_tag}`,
+          );
+
+          // Generar nombre único para el archivo de decreto basado en la versión
+          const fileName = `decreto-${dto.version_tag.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+          decree_file_url = await this.fileUploadService.uploadFile(
+            decree_file,
+            fileName,
+          );
+
+          this.logger.log(`Decreto subido exitosamente: ${decree_file_url}`);
+        } catch (uploadError) {
+          this.logger.error(
+            `Error al subir el archivo de decreto: ${uploadError.message}`,
+            uploadError.stack,
+          );
+          // Fallar completamente si hay error en el decreto para mantener consistencia
+          throw new InternalServerErrorException(
+            `Error al procesar el archivo de decreto: ${uploadError.message}`,
+          );
+        }
       }
 
       // 2. Crear la nueva versión con decreto
@@ -121,9 +154,7 @@ export class OrganigramVersionsService {
         version_tag: dto.version_tag,
         effective_date: new Date(dto.effective_date),
         description: dto.description,
-        decree_file: dto.decree_file_id
-          ? new Types.ObjectId(dto.decree_file_id)
-          : null,
+        decree_file_url: decree_file_url, // Almacenar la URL directamente
         is_active: true,
         raw_input_tree: this.cleanObjectForSerialization({
           nodes: dto.nodes,
@@ -131,6 +162,7 @@ export class OrganigramVersionsService {
             created_from_dto: true,
             node_count: dto.nodes?.length || 0,
             timestamp: new Date().toISOString(),
+            has_decree_file: !!decree_file_url,
           },
         }),
       };
@@ -156,6 +188,14 @@ export class OrganigramVersionsService {
         error.stack,
       );
 
+      // Si hubo error después de subir el decreto, idealmente deberíamos eliminarlo
+      // Esto requeriría un método deleteFile en el FileUploadService
+      if (decree_file) {
+        this.logger.warn(
+          'Se subió un archivo de decreto pero falló la creación de la versión. Considera implementar limpieza de archivos huérfanos.',
+        );
+      }
+
       if (
         error instanceof BadRequestException ||
         error instanceof ConflictException
@@ -169,6 +209,38 @@ export class OrganigramVersionsService {
     }
   }
 
+  // async getAllVersions(
+  //   sortBy: string = 'effective_date',
+  //   sortOrder: 'asc' | 'desc' = 'desc',
+  // ): Promise<
+  //   Array<{
+  //     _id: string;
+  //     version_tag: string;
+  //     effective_date: Date;
+  //     isActive: boolean;
+  //   }>
+  // > {
+  //   // Validar campos de ordenamiento permitidos
+  //   const allowedSortFields = ['effective_date', 'version_tag', 'createdAt'];
+  //   const sortField = allowedSortFields.includes(sortBy)
+  //     ? sortBy
+  //     : 'effective_date';
+  //   const sortDirection = sortOrder === 'asc' ? 1 : -1;
+
+  //   const versions = await this.organigramVersionModel
+  //     .find()
+  //     .select('_id version_tag effective_date is_active createdAt')
+  //     .sort({ [sortField]: sortDirection })
+  //     .lean()
+  //     .exec();
+
+  //   return versions.map((version) => ({
+  //     _id: version._id.toString(),
+  //     version_tag: version.version_tag,
+  //     effective_date: version.effective_date,
+  //     isActive: version.is_active || false,
+  //   }));
+  // }
   async getAllVersions(
     sortBy: string = 'effective_date',
     sortOrder: 'asc' | 'desc' = 'desc',
@@ -178,6 +250,7 @@ export class OrganigramVersionsService {
       version_tag: string;
       effective_date: Date;
       isActive: boolean;
+      decree_file_url?: string;
     }>
   > {
     // Validar campos de ordenamiento permitidos
@@ -189,7 +262,9 @@ export class OrganigramVersionsService {
 
     const versions = await this.organigramVersionModel
       .find()
-      .select('_id version_tag effective_date is_active createdAt')
+      .select(
+        '_id version_tag effective_date is_active decree_file_url createdAt',
+      )
       .sort({ [sortField]: sortDirection })
       .lean()
       .exec();
@@ -199,6 +274,7 @@ export class OrganigramVersionsService {
       version_tag: version.version_tag,
       effective_date: version.effective_date,
       isActive: version.is_active || false,
+      decree_file_url: version.decree_file_url || undefined, // Convertir null a undefined
     }));
   }
 
@@ -292,6 +368,27 @@ export class OrganigramVersionsService {
     }
   }
 
+  // private cleanObjectForSerialization(obj: any): any {
+  //   if (obj === null || obj === undefined) {
+  //     return obj;
+  //   }
+
+  //   if (Array.isArray(obj)) {
+  //     return obj.map((item) => this.cleanObjectForSerialization(item));
+  //   }
+
+  //   if (typeof obj === 'object') {
+  //     const cleaned: any = {};
+  //     for (const [key, value] of Object.entries(obj)) {
+  //       if (!key.startsWith('_') && typeof value !== 'function') {
+  //         cleaned[key] = this.cleanObjectForSerialization(value);
+  //       }
+  //     }
+  //     return cleaned;
+  //   }
+
+  //   return obj;
+  // }
   private cleanObjectForSerialization(obj: any): any {
     if (obj === null || obj === undefined) {
       return obj;
@@ -1155,6 +1252,140 @@ export class OrganigramVersionsService {
     }
   }
 
+  // private async processNodeRecursiveWithPeople(
+  //   nodes: DepartmentNodeInputDto[],
+  //   versionId: Types.ObjectId,
+  //   parentMongoId: Types.ObjectId | null,
+  //   frontendIdToMongoIdMap: FrontendToMongoIdMap,
+  //   parentHierarchicalPath: string = '',
+  // ): Promise<void> {
+  //   for (const nodeInput of nodes) {
+  //     let departmentRecord: any = null;
+
+  //     // Construir el path jerárquico esperado
+  //     const expectedHierarchicalPath = parentHierarchicalPath
+  //       ? `${parentHierarchicalPath}/${nodeInput.department_data.name}`
+  //       : nodeInput.department_data.name;
+
+  //     // ESTRATEGIA SIMPLIFICADA:
+  //     // 1. Buscar por código si existe (más específico)
+  //     if (nodeInput.department_data.code) {
+  //       departmentRecord = await this.departmentsService.findByCode(
+  //         nodeInput.department_data.code,
+  //       );
+  //     }
+
+  //     // 2. Si no tiene código o no se encontró por código, buscar por nombre
+  //     if (!departmentRecord) {
+  //       departmentRecord = await this.departmentsService.findByName(
+  //         nodeInput.department_data.name,
+  //       );
+  //     }
+
+  //     // 3. Validar que no exista conflicto jerárquico
+  //     if (departmentRecord) {
+  //       const existingNodeWithSameDept = await this.departmentNodeModel.findOne(
+  //         {
+  //           version: versionId,
+  //           department: departmentRecord._id,
+  //         },
+  //       );
+
+  //       if (existingNodeWithSameDept) {
+  //         throw new ConflictException(
+  //           `El departamento "${nodeInput.department_data.name}" ya existe en esta versión del organigrama en otra ubicación.`,
+  //         );
+  //       }
+  //     }
+
+  //     // 4. Crear departamento si no existe
+  //     if (!departmentRecord) {
+  //       this.logger.log(
+  //         `Creando nuevo departamento: ${nodeInput.department_data.name}`,
+  //       );
+
+  //       const createDepartmentDto: CreateDepartmentDto = {
+  //         name: nodeInput.department_data.name,
+  //         code: nodeInput.department_data.code,
+  //         objective: nodeInput.department_data.objective,
+  //         is_active: true,
+  //       };
+
+  //       const createdDepartment =
+  //         await this.departmentsService.create(createDepartmentDto);
+
+  //       if (!createdDepartment) {
+  //         throw new InternalServerErrorException(
+  //           `No se pudo crear el departamento: ${nodeInput.department_data.name}`,
+  //         );
+  //       }
+
+  //       departmentRecord = createdDepartment;
+  //     }
+
+  //     // Validar level_id
+  //     const levelRecord = await this.levelsService.findOne(nodeInput.level_id);
+  //     if (!levelRecord) {
+  //       throw new BadRequestException(
+  //         `Nivel con ID '${nodeInput.level_id}' no encontrado.`,
+  //       );
+  //     }
+
+  //     // Validar personas si se proporcionan
+  //     let responsibleOfficialId: Types.ObjectId | null = null;
+  //     let assignedAssessorIds: Types.ObjectId[] = [];
+
+  //     if (nodeInput.responsible_official_id) {
+  //       responsibleOfficialId = await this.validateAndGetResponsibleOfficial(
+  //         nodeInput.responsible_official_id,
+  //       );
+  //     }
+
+  //     if (
+  //       nodeInput.assigned_assessor_ids &&
+  //       nodeInput.assigned_assessor_ids.length > 0
+  //     ) {
+  //       assignedAssessorIds = await this.validateAndGetAssessors(
+  //         nodeInput.assigned_assessor_ids,
+  //       );
+  //     }
+
+  //     // Crear el DepartmentNode
+  //     const nodeDataToCreate = {
+  //       version: versionId,
+  //       department: new Types.ObjectId(departmentRecord._id as string),
+  //       level_id: new Types.ObjectId(levelRecord._id as string),
+  //       parent_node: parentMongoId,
+  //       responsible_official: responsibleOfficialId,
+  //       assigned_assessors: assignedAssessorIds,
+  //       ui_hints: nodeInput.ui_hints || {},
+  //       // hierarchical_path se calculará automáticamente en el middleware
+  //     };
+
+  //     const createdNodes = await this.departmentNodeModel.create([
+  //       nodeDataToCreate,
+  //     ]);
+  //     const newDepartmentNode = createdNodes[0];
+
+  //     frontendIdToMongoIdMap[nodeInput.frontend_id] =
+  //       newDepartmentNode._id as Types.ObjectId;
+
+  //     this.logger.log(
+  //       `DepartmentNode creado: ${newDepartmentNode._id} para ${nodeInput.department_data.name} en path: ${expectedHierarchicalPath}`,
+  //     );
+
+  //     // Procesar hijos recursivamente
+  //     if (nodeInput.children && nodeInput.children.length > 0) {
+  //       await this.processNodeRecursiveWithPeople(
+  //         nodeInput.children,
+  //         versionId,
+  //         newDepartmentNode._id as Types.ObjectId,
+  //         frontendIdToMongoIdMap,
+  //         expectedHierarchicalPath, // Pasar el path jerárquico
+  //       );
+  //     }
+  //   }
+  // }
   private async processNodeRecursiveWithPeople(
     nodes: DepartmentNodeInputDto[],
     versionId: Types.ObjectId,
@@ -1262,7 +1493,6 @@ export class OrganigramVersionsService {
         responsible_official: responsibleOfficialId,
         assigned_assessors: assignedAssessorIds,
         ui_hints: nodeInput.ui_hints || {},
-        // hierarchical_path se calculará automáticamente en el middleware
       };
 
       const createdNodes = await this.departmentNodeModel.create([
@@ -1284,7 +1514,7 @@ export class OrganigramVersionsService {
           versionId,
           newDepartmentNode._id as Types.ObjectId,
           frontendIdToMongoIdMap,
-          expectedHierarchicalPath, // Pasar el path jerárquico
+          expectedHierarchicalPath,
         );
       }
     }
@@ -1321,6 +1551,25 @@ export class OrganigramVersionsService {
     return department;
   }
 
+  // private async validateAndGetResponsibleOfficial(
+  //   officialId: string,
+  // ): Promise<Types.ObjectId> {
+  //   const official = await this.peopleService.findOne(officialId);
+
+  //   if (!official) {
+  //     throw new NotFoundException(
+  //       `Funcionario con ID ${officialId} no encontrado`,
+  //     );
+  //   }
+
+  //   if (official.person_type !== 'official') {
+  //     throw new BadRequestException(
+  //       `La persona con ID ${officialId} no es un funcionario (tipo requerido: OFFICIAL)`,
+  //     );
+  //   }
+
+  //   return new Types.ObjectId(officialId);
+  // }
   private async validateAndGetResponsibleOfficial(
     officialId: string,
   ): Promise<Types.ObjectId> {
@@ -1341,6 +1590,38 @@ export class OrganigramVersionsService {
     return new Types.ObjectId(officialId);
   }
 
+  // private async validateAndGetAssessors(
+  //   assessorIds: string[],
+  // ): Promise<Types.ObjectId[]> {
+  //   const assessors = await Promise.all(
+  //     assessorIds.map((id) => this.peopleService.findOne(id)),
+  //   );
+
+  //   // Validar que todos existen
+  //   const notFound = assessorIds.filter((id, index) => !assessors[index]);
+  //   if (notFound.length > 0) {
+  //     throw new NotFoundException(
+  //       `Los siguientes asesores no fueron encontrados: ${notFound.join(', ')}`,
+  //     );
+  //   }
+
+  //   // Validar que todos son asesores
+  //   const invalidTypes = assessors.filter(
+  //     (assessor) => assessor.person_type !== 'assessor',
+  //   );
+  //   if (invalidTypes.length > 0) {
+  //     const invalidIds = invalidTypes.map((assessor) =>
+  //       assessor._id?.toString(),
+  //     );
+  //     throw new BadRequestException(
+  //       `Las siguientes personas no son asesores (tipo requerido: ASSESSOR): ${invalidIds.join(', ')}`,
+  //     );
+  //   }
+
+  //   return assessorIds.map((id) => new Types.ObjectId(id));
+  // }
+
+  // Método para buscar nodos por path jerárquico
   private async validateAndGetAssessors(
     assessorIds: string[],
   ): Promise<Types.ObjectId[]> {
@@ -1372,7 +1653,6 @@ export class OrganigramVersionsService {
     return assessorIds.map((id) => new Types.ObjectId(id));
   }
 
-  // Método para buscar nodos por path jerárquico
   async findNodesByHierarchicalPath(
     versionId: string,
     hierarchicalPath: string,
@@ -1419,5 +1699,60 @@ export class OrganigramVersionsService {
     ]);
 
     return duplicates;
+  }
+
+  async uploadDecreeToVersion(
+    versionId: string,
+    decree_file: Express.Multer.File,
+  ): Promise<OrganigramVersion> {
+    this.logger.log(`Subiendo decreto para versión existente: ${versionId}`);
+
+    try {
+      // 1. Verificar que la versión existe
+      const existingVersion =
+        await this.organigramVersionModel.findById(versionId);
+      if (!existingVersion) {
+        throw new NotFoundException(
+          `Versión del organigrama con ID ${versionId} no encontrada`,
+        );
+      }
+
+      // 2. Subir el archivo de decreto
+      const fileName = `decreto-${existingVersion.version_tag.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+      const decree_file_url = await this.fileUploadService.uploadFile(
+        decree_file,
+        fileName,
+      );
+
+      this.logger.log(`Decreto subido exitosamente: ${decree_file_url}`);
+
+      // 3. Actualizar la versión con la URL del decreto
+      const updatedVersion =
+        await this.organigramVersionModel.findByIdAndUpdate(
+          versionId,
+          {
+            decree_file_url: decree_file_url,
+          },
+          { new: true },
+        );
+
+      this.logger.log(`Versión ${versionId} actualizada con decreto`);
+
+      return updatedVersion!;
+    } catch (error) {
+      this.logger.error(
+        `Error al subir decreto para versión ${versionId}: ${error.message}`,
+        error.stack,
+      );
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        `Error al procesar el archivo de decreto: ${error.message}`,
+      );
+    }
   }
 }

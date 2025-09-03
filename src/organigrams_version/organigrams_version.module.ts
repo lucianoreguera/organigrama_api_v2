@@ -13,6 +13,7 @@ import {
 import { DepartmentsModule } from '../departments/departments.module';
 import { LevelsModule } from '../levels/levels.module';
 import { PeopleModule } from '../people/people.module';
+import { CommonModule } from '../common/common.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { PeopleModule } from '../people/people.module';
     DepartmentsModule, // Para usar DepartmentsService
     LevelsModule, // Para usar LevelsService
     PeopleModule, // Para usar PeopleService
+    CommonModule, // Para usar FileUploadService
   ],
   controllers: [OrganigramVersionsController],
   providers: [OrganigramVersionsService],
