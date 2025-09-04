@@ -43,72 +43,6 @@ export class OrganigramVersionsService {
     private readonly fileUploadService: FileUploadService,
   ) {}
 
-  // async processAndCreateVersion(
-  //   dto: CreateOrganigramVersionDto,
-  //   requestingUser?: any,
-  // ): Promise<OrganigramVersion> {
-  //   this.logger.log(
-  //     `Iniciando procesamiento para nueva versión del organigrama: ${dto.version_tag}`,
-  //   );
-
-  //   try {
-  //     // 1. Validar archivo de decreto si se proporciona
-  //     if (dto.decree_file_id) {
-  //       await this.validateDecreeFile(dto.decree_file_id);
-  //     }
-
-  //     // 2. Crear la nueva versión con decreto
-  //     const newVersionData = {
-  //       version_tag: dto.version_tag,
-  //       effective_date: new Date(dto.effective_date),
-  //       description: dto.description,
-  //       decree_file: dto.decree_file_id
-  //         ? new Types.ObjectId(dto.decree_file_id)
-  //         : null,
-  //       is_active: true,
-  //       raw_input_tree: this.cleanObjectForSerialization({
-  //         nodes: dto.nodes,
-  //         metadata: {
-  //           created_from_dto: true,
-  //           node_count: dto.nodes?.length || 0,
-  //           timestamp: new Date().toISOString(),
-  //         },
-  //       }),
-  //     };
-
-  //     const createdVersion =
-  //       await this.organigramVersionModel.create(newVersionData);
-  //     this.logger.log(`Nueva versión creada: ${createdVersion._id}`);
-
-  //     // 3. Procesar nodos del árbol con asignación de personas
-  //     const frontendIdToMongoIdMap: FrontendToMongoIdMap = {};
-  //     await this.processNodeRecursiveWithPeople(
-  //       dto.nodes,
-  //       createdVersion._id as Types.ObjectId,
-  //       null,
-  //       frontendIdToMongoIdMap,
-  //     );
-
-  //     this.logger.log('Procesamiento completado exitosamente.');
-  //     return createdVersion;
-  //   } catch (error) {
-  //     this.logger.error(
-  //       `Error durante la creación: ${error.message}`,
-  //       error.stack,
-  //     );
-
-  //     if (
-  //       error instanceof BadRequestException ||
-  //       error instanceof ConflictException
-  //     ) {
-  //       throw error;
-  //     }
-
-  //     throw new InternalServerErrorException(
-  //       `Error no controlado al procesar la nueva versión del organigrama: ${error.message}`,
-  //     );
-  //   }
-  // }
   async processAndCreateVersion(
     dto: CreateOrganigramVersionDto,
     decree_file?: Express.Multer.File,
@@ -209,38 +143,6 @@ export class OrganigramVersionsService {
     }
   }
 
-  // async getAllVersions(
-  //   sortBy: string = 'effective_date',
-  //   sortOrder: 'asc' | 'desc' = 'desc',
-  // ): Promise<
-  //   Array<{
-  //     _id: string;
-  //     version_tag: string;
-  //     effective_date: Date;
-  //     isActive: boolean;
-  //   }>
-  // > {
-  //   // Validar campos de ordenamiento permitidos
-  //   const allowedSortFields = ['effective_date', 'version_tag', 'createdAt'];
-  //   const sortField = allowedSortFields.includes(sortBy)
-  //     ? sortBy
-  //     : 'effective_date';
-  //   const sortDirection = sortOrder === 'asc' ? 1 : -1;
-
-  //   const versions = await this.organigramVersionModel
-  //     .find()
-  //     .select('_id version_tag effective_date is_active createdAt')
-  //     .sort({ [sortField]: sortDirection })
-  //     .lean()
-  //     .exec();
-
-  //   return versions.map((version) => ({
-  //     _id: version._id.toString(),
-  //     version_tag: version.version_tag,
-  //     effective_date: version.effective_date,
-  //     isActive: version.is_active || false,
-  //   }));
-  // }
   async getAllVersions(
     sortBy: string = 'effective_date',
     sortOrder: 'asc' | 'desc' = 'desc',
@@ -368,27 +270,6 @@ export class OrganigramVersionsService {
     }
   }
 
-  // private cleanObjectForSerialization(obj: any): any {
-  //   if (obj === null || obj === undefined) {
-  //     return obj;
-  //   }
-
-  //   if (Array.isArray(obj)) {
-  //     return obj.map((item) => this.cleanObjectForSerialization(item));
-  //   }
-
-  //   if (typeof obj === 'object') {
-  //     const cleaned: any = {};
-  //     for (const [key, value] of Object.entries(obj)) {
-  //       if (!key.startsWith('_') && typeof value !== 'function') {
-  //         cleaned[key] = this.cleanObjectForSerialization(value);
-  //       }
-  //     }
-  //     return cleaned;
-  //   }
-
-  //   return obj;
-  // }
   private cleanObjectForSerialization(obj: any): any {
     if (obj === null || obj === undefined) {
       return obj;
@@ -640,7 +521,7 @@ export class OrganigramVersionsService {
       const rootNode = await this.departmentNodeModel
         .findById(nodeId)
         .populate('department', 'name code objective')
-        .populate('level_id', 'name level') // *** INCLUIR 'level' ***
+        .populate('level_id', 'name level')
         .populate(
           'responsible_official',
           'firstname lastname person_type photo_url job_title_text',
@@ -655,29 +536,54 @@ export class OrganigramVersionsService {
         throw new NotFoundException(`Nodo con ID ${nodeId} no encontrado.`);
       }
 
-      // Obtener todos los descendientes usando el path
-      const descendants = await this.departmentNodeModel
-        .find({
-          version: rootNode.version,
-          path: { $regex: `^${rootNode.path}/` },
-        })
-        .populate('department', 'name code objective')
-        .populate('level_id', 'name level') // *** INCLUIR 'level' ***
-        .populate(
-          'responsible_official',
-          'firstname lastname person_type photo_url job_title_text',
-        )
-        .populate(
-          'assigned_assessors',
-          'firstname lastname person_type photo_url expertise_area',
-        )
-        .sort({ depth: 1, path: 1 })
-        .lean();
+      // FUNCIÓN RECURSIVA para obtener todos los descendientes
+      const getAllDescendants = async (
+        parentNodeId: string,
+      ): Promise<any[]> => {
+        // Buscar hijos directos
+        const directChildren = await this.departmentNodeModel
+          .find({
+            version: rootNode.version,
+            parent_node: new Types.ObjectId(parentNodeId),
+          })
+          .populate('department', 'name code objective')
+          .populate('level_id', 'name level')
+          .populate(
+            'responsible_official',
+            'firstname lastname person_type photo_url job_title_text',
+          )
+          .populate(
+            'assigned_assessors',
+            'firstname lastname person_type photo_url expertise_area',
+          )
+          .lean();
+
+        let allDescendants = [...directChildren];
+
+        // Para cada hijo directo, obtener sus descendientes recursivamente
+        for (const child of directChildren) {
+          const childDescendants = await getAllDescendants(
+            (child._id as Types.ObjectId).toString(),
+          );
+          allDescendants = allDescendants.concat(childDescendants);
+        }
+
+        return allDescendants;
+      };
+
+      // Obtener todos los descendientes del nodo raíz
+      const descendants = await getAllDescendants(nodeId);
+
+      this.logger.log(
+        `Encontrados ${descendants.length} descendientes para ${nodeId}`,
+      );
 
       // Construir el nodo raíz manualmente
       const rootNodeFormatted: OrganigramNodeDto = {
         frontend_id: (rootNode._id as Types.ObjectId).toString(),
-        parentId: null,
+        parentId: rootNode.parent_node
+          ? (rootNode.parent_node as Types.ObjectId).toString()
+          : null,
         department_data: {
           name: (rootNode.department as any)?.name || 'Sin nombre',
           code: (rootNode.department as any)?.code || '',
@@ -687,11 +593,11 @@ export class OrganigramVersionsService {
           ? ((rootNode.level_id as any)?._id as Types.ObjectId)?.toString() ||
             ''
           : '',
-        level: (rootNode.level_id as any)?.level || 0, // *** NUEVA PROPIEDAD ***
+        level: (rootNode.level_id as any)?.level || 0,
         ui_hints: rootNode.ui_hints || {},
         children: [],
 
-        // *** AGREGAR DATOS DE PERSONAS ***
+        // AGREGAR DATOS DE PERSONAS
         responsible_official: (rootNode as any).responsible_official
           ? {
               _id: (
@@ -728,11 +634,11 @@ export class OrganigramVersionsService {
         return rootNodeFormatted;
       }
 
-      // Crear mapa para construcción de jerarquía
+      // Crear mapa para construcción de jerarquía - INCLUIR EL NODO RAÍZ
       const nodeMap = new Map<string, OrganigramNodeDto>();
       nodeMap.set(rootNodeFormatted.frontend_id, rootNodeFormatted);
 
-      // Procesar descendientes
+      // Procesar TODOS los descendientes y agregarlos al mapa
       for (const descendant of descendants) {
         const descendantFormatted: OrganigramNodeDto = {
           frontend_id: (descendant._id as Types.ObjectId).toString(),
@@ -749,11 +655,11 @@ export class OrganigramVersionsService {
                 (descendant.level_id as any)?._id as Types.ObjectId
               )?.toString() || ''
             : '',
-          level: (descendant.level_id as any)?.level || 0, // *** NUEVA PROPIEDAD ***
+          level: (descendant.level_id as any)?.level || 0,
           ui_hints: descendant.ui_hints || {},
           children: [],
 
-          // *** AGREGAR DATOS DE PERSONAS ***
+          // AGREGAR DATOS DE PERSONAS
           responsible_official: (descendant as any).responsible_official
             ? {
                 _id: (
@@ -786,7 +692,7 @@ export class OrganigramVersionsService {
         nodeMap.set(descendantFormatted.frontend_id, descendantFormatted);
       }
 
-      // Construir relaciones padre-hijo
+      // Construir relaciones padre-hijo para TODOS los nodos
       for (const descendant of descendants) {
         const childKey = (descendant._id as Types.ObjectId).toString();
         const parentKey = descendant.parent_node
@@ -802,15 +708,16 @@ export class OrganigramVersionsService {
             this.logger.debug(`Relación creada: ${parentKey} -> ${childKey}`);
           } else {
             this.logger.warn(
-              `No se pudo crear relación ${parentKey} -> ${childKey}`,
+              `No se pudo crear relación ${parentKey} -> ${childKey}. Parent: ${!!parent}, Child: ${!!child}`,
             );
           }
         }
       }
 
       this.logger.log(
-        `Estructura de descendientes construida exitosamente para ${nodeId}`,
+        `Estructura de descendientes construida exitosamente para ${nodeId}. Total nodos en el árbol: ${nodeMap.size}`,
       );
+
       return rootNodeFormatted;
     } catch (error) {
       this.logger.error(
@@ -1252,140 +1159,6 @@ export class OrganigramVersionsService {
     }
   }
 
-  // private async processNodeRecursiveWithPeople(
-  //   nodes: DepartmentNodeInputDto[],
-  //   versionId: Types.ObjectId,
-  //   parentMongoId: Types.ObjectId | null,
-  //   frontendIdToMongoIdMap: FrontendToMongoIdMap,
-  //   parentHierarchicalPath: string = '',
-  // ): Promise<void> {
-  //   for (const nodeInput of nodes) {
-  //     let departmentRecord: any = null;
-
-  //     // Construir el path jerárquico esperado
-  //     const expectedHierarchicalPath = parentHierarchicalPath
-  //       ? `${parentHierarchicalPath}/${nodeInput.department_data.name}`
-  //       : nodeInput.department_data.name;
-
-  //     // ESTRATEGIA SIMPLIFICADA:
-  //     // 1. Buscar por código si existe (más específico)
-  //     if (nodeInput.department_data.code) {
-  //       departmentRecord = await this.departmentsService.findByCode(
-  //         nodeInput.department_data.code,
-  //       );
-  //     }
-
-  //     // 2. Si no tiene código o no se encontró por código, buscar por nombre
-  //     if (!departmentRecord) {
-  //       departmentRecord = await this.departmentsService.findByName(
-  //         nodeInput.department_data.name,
-  //       );
-  //     }
-
-  //     // 3. Validar que no exista conflicto jerárquico
-  //     if (departmentRecord) {
-  //       const existingNodeWithSameDept = await this.departmentNodeModel.findOne(
-  //         {
-  //           version: versionId,
-  //           department: departmentRecord._id,
-  //         },
-  //       );
-
-  //       if (existingNodeWithSameDept) {
-  //         throw new ConflictException(
-  //           `El departamento "${nodeInput.department_data.name}" ya existe en esta versión del organigrama en otra ubicación.`,
-  //         );
-  //       }
-  //     }
-
-  //     // 4. Crear departamento si no existe
-  //     if (!departmentRecord) {
-  //       this.logger.log(
-  //         `Creando nuevo departamento: ${nodeInput.department_data.name}`,
-  //       );
-
-  //       const createDepartmentDto: CreateDepartmentDto = {
-  //         name: nodeInput.department_data.name,
-  //         code: nodeInput.department_data.code,
-  //         objective: nodeInput.department_data.objective,
-  //         is_active: true,
-  //       };
-
-  //       const createdDepartment =
-  //         await this.departmentsService.create(createDepartmentDto);
-
-  //       if (!createdDepartment) {
-  //         throw new InternalServerErrorException(
-  //           `No se pudo crear el departamento: ${nodeInput.department_data.name}`,
-  //         );
-  //       }
-
-  //       departmentRecord = createdDepartment;
-  //     }
-
-  //     // Validar level_id
-  //     const levelRecord = await this.levelsService.findOne(nodeInput.level_id);
-  //     if (!levelRecord) {
-  //       throw new BadRequestException(
-  //         `Nivel con ID '${nodeInput.level_id}' no encontrado.`,
-  //       );
-  //     }
-
-  //     // Validar personas si se proporcionan
-  //     let responsibleOfficialId: Types.ObjectId | null = null;
-  //     let assignedAssessorIds: Types.ObjectId[] = [];
-
-  //     if (nodeInput.responsible_official_id) {
-  //       responsibleOfficialId = await this.validateAndGetResponsibleOfficial(
-  //         nodeInput.responsible_official_id,
-  //       );
-  //     }
-
-  //     if (
-  //       nodeInput.assigned_assessor_ids &&
-  //       nodeInput.assigned_assessor_ids.length > 0
-  //     ) {
-  //       assignedAssessorIds = await this.validateAndGetAssessors(
-  //         nodeInput.assigned_assessor_ids,
-  //       );
-  //     }
-
-  //     // Crear el DepartmentNode
-  //     const nodeDataToCreate = {
-  //       version: versionId,
-  //       department: new Types.ObjectId(departmentRecord._id as string),
-  //       level_id: new Types.ObjectId(levelRecord._id as string),
-  //       parent_node: parentMongoId,
-  //       responsible_official: responsibleOfficialId,
-  //       assigned_assessors: assignedAssessorIds,
-  //       ui_hints: nodeInput.ui_hints || {},
-  //       // hierarchical_path se calculará automáticamente en el middleware
-  //     };
-
-  //     const createdNodes = await this.departmentNodeModel.create([
-  //       nodeDataToCreate,
-  //     ]);
-  //     const newDepartmentNode = createdNodes[0];
-
-  //     frontendIdToMongoIdMap[nodeInput.frontend_id] =
-  //       newDepartmentNode._id as Types.ObjectId;
-
-  //     this.logger.log(
-  //       `DepartmentNode creado: ${newDepartmentNode._id} para ${nodeInput.department_data.name} en path: ${expectedHierarchicalPath}`,
-  //     );
-
-  //     // Procesar hijos recursivamente
-  //     if (nodeInput.children && nodeInput.children.length > 0) {
-  //       await this.processNodeRecursiveWithPeople(
-  //         nodeInput.children,
-  //         versionId,
-  //         newDepartmentNode._id as Types.ObjectId,
-  //         frontendIdToMongoIdMap,
-  //         expectedHierarchicalPath, // Pasar el path jerárquico
-  //       );
-  //     }
-  //   }
-  // }
   private async processNodeRecursiveWithPeople(
     nodes: DepartmentNodeInputDto[],
     versionId: Types.ObjectId,
@@ -1520,56 +1293,6 @@ export class OrganigramVersionsService {
     }
   }
 
-  private async findDepartmentByNameAndCode(
-    name: string,
-    code: string,
-  ): Promise<any> {
-    // Implementar búsqueda por nombre Y código
-    const department = await this.departmentsService.findByNameAndCode(
-      name,
-      code,
-    );
-    return department;
-  }
-
-  private async findDepartmentByContext(
-    name: string,
-    levelId: string,
-    hierarchicalPath: string,
-  ): Promise<any> {
-    // Implementar búsqueda por contexto jerárquico
-    // Esto podría involucrar buscar departamentos que:
-    // 1. Tengan el mismo nombre
-    // 2. Estén en el mismo nivel
-    // 3. Tengan un path jerárquico similar
-
-    const department = await this.departmentsService.findByHierarchicalContext(
-      name,
-      levelId,
-      hierarchicalPath,
-    );
-    return department;
-  }
-
-  // private async validateAndGetResponsibleOfficial(
-  //   officialId: string,
-  // ): Promise<Types.ObjectId> {
-  //   const official = await this.peopleService.findOne(officialId);
-
-  //   if (!official) {
-  //     throw new NotFoundException(
-  //       `Funcionario con ID ${officialId} no encontrado`,
-  //     );
-  //   }
-
-  //   if (official.person_type !== 'official') {
-  //     throw new BadRequestException(
-  //       `La persona con ID ${officialId} no es un funcionario (tipo requerido: OFFICIAL)`,
-  //     );
-  //   }
-
-  //   return new Types.ObjectId(officialId);
-  // }
   private async validateAndGetResponsibleOfficial(
     officialId: string,
   ): Promise<Types.ObjectId> {
@@ -1590,38 +1313,6 @@ export class OrganigramVersionsService {
     return new Types.ObjectId(officialId);
   }
 
-  // private async validateAndGetAssessors(
-  //   assessorIds: string[],
-  // ): Promise<Types.ObjectId[]> {
-  //   const assessors = await Promise.all(
-  //     assessorIds.map((id) => this.peopleService.findOne(id)),
-  //   );
-
-  //   // Validar que todos existen
-  //   const notFound = assessorIds.filter((id, index) => !assessors[index]);
-  //   if (notFound.length > 0) {
-  //     throw new NotFoundException(
-  //       `Los siguientes asesores no fueron encontrados: ${notFound.join(', ')}`,
-  //     );
-  //   }
-
-  //   // Validar que todos son asesores
-  //   const invalidTypes = assessors.filter(
-  //     (assessor) => assessor.person_type !== 'assessor',
-  //   );
-  //   if (invalidTypes.length > 0) {
-  //     const invalidIds = invalidTypes.map((assessor) =>
-  //       assessor._id?.toString(),
-  //     );
-  //     throw new BadRequestException(
-  //       `Las siguientes personas no son asesores (tipo requerido: ASSESSOR): ${invalidIds.join(', ')}`,
-  //     );
-  //   }
-
-  //   return assessorIds.map((id) => new Types.ObjectId(id));
-  // }
-
-  // Método para buscar nodos por path jerárquico
   private async validateAndGetAssessors(
     assessorIds: string[],
   ): Promise<Types.ObjectId[]> {
