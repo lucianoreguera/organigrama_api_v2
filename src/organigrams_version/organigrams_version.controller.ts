@@ -144,66 +144,6 @@ export class OrganigramVersionsController {
     );
   }
 
-  // @Get()
-  // @ApiOperation({
-  //   summary: 'Obtener todas las versiones del organigrama',
-  //   description:
-  //     'Devuelve una lista con todas las versiones incluyendo version_tag, effective_date y _id',
-  // })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'Lista de versiones obtenida exitosamente.',
-  //   schema: {
-  //     type: 'array',
-  //     items: {
-  //       type: 'object',
-  //       properties: {
-  //         _id: {
-  //           type: 'string',
-  //           example: '507f1f77bcf86cd799439011',
-  //         },
-  //         version_tag: {
-  //           type: 'string',
-  //           example: 'v1.2.3',
-  //         },
-  //         effective_date: {
-  //           type: 'string',
-  //           format: 'date-time',
-  //           example: '2024-01-15T10:30:00.000Z',
-  //         },
-  //         isActive: {
-  //           type: 'boolean',
-  //           example: true,
-  //         },
-  //       },
-  //     },
-  //   },
-  // })
-  // @ApiQuery({
-  //   name: 'sortBy',
-  //   required: false,
-  //   description: 'Campo por el cual ordenar (effective_date, version_tag)',
-  //   example: 'effective_date',
-  // })
-  // @ApiQuery({
-  //   name: 'sortOrder',
-  //   required: false,
-  //   description: 'Orden de clasificación (asc, desc)',
-  //   example: 'desc',
-  // })
-  // async getAllVersions(
-  //   @Query('sortBy') sortBy?: string,
-  //   @Query('sortOrder') sortOrder?: 'asc' | 'desc',
-  // ): Promise<
-  //   Array<{
-  //     _id: string;
-  //     version_tag: string;
-  //     effective_date: Date;
-  //     isActive: boolean;
-  //   }>
-  // > {
-  //   return this.organigramVersionsService.getAllVersions(sortBy, sortOrder);
-  // }
   @Get()
   @ApiOperation({
     summary: 'Obtener todas las versiones del organigrama',
@@ -272,21 +212,6 @@ export class OrganigramVersionsController {
     return this.organigramVersionsService.getAllVersions(sortBy, sortOrder);
   }
 
-  // @Get('active/structure')
-  // // @Roles(Role.ADMIN, Role.EDITOR, Role.VIEWER)
-  // @ApiOperation({
-  //   summary:
-  //     'Obtener la estructura completa de la versión activa del organigrama',
-  // })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'Estructura del organigrama activo obtenida exitosamente.',
-  //   type: OrganigramStructureResponseDto,
-  // })
-  // @ApiResponse({ status: 404, description: 'No se encontró versión activa.' })
-  // async getActiveOrganigramStructure(): Promise<OrganigramStructureResponseDto> {
-  //   return this.organigramVersionsService.getActiveOrganigramStructure();
-  // }
   @Get('active/structure')
   @ApiOperation({
     summary:
@@ -302,30 +227,6 @@ export class OrganigramVersionsController {
     return this.organigramVersionsService.getActiveOrganigramStructure();
   }
 
-  // @Get(':versionId/structure')
-  // // @Roles(Role.ADMIN, Role.EDITOR, Role.VIEWER)
-  // @ApiOperation({
-  //   summary:
-  //     'Obtener la estructura completa de una versión específica del organigrama',
-  // })
-  // @ApiParam({
-  //   name: 'versionId',
-  //   description: 'ID de la versión del organigrama (ObjectId de MongoDB)',
-  //   example: '507f1f77bcf86cd799439011',
-  // })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'Estructura del organigrama obtenida exitosamente.',
-  //   type: OrganigramStructureResponseDto,
-  // })
-  // @ApiResponse({ status: 404, description: 'Versión no encontrada.' })
-  // async getOrganigramStructureByVersion(
-  //   @Param('versionId', ParseMongoIdPipe) versionId: string,
-  // ): Promise<OrganigramStructureResponseDto> {
-  //   return this.organigramVersionsService.getOrganigramStructureByVersion(
-  //     versionId,
-  //   );
-  // }
   @Get(':versionId/structure')
   @ApiOperation({
     summary:
@@ -350,20 +251,6 @@ export class OrganigramVersionsController {
     );
   }
 
-  // @Get('active')
-  // // @Roles(Role.ADMIN, Role.EDITOR, Role.VIEWER)
-  // @ApiOperation({
-  //   summary: 'Obtener información básica de la versión activa del organigrama',
-  // })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: 'Versión activa obtenida exitosamente.',
-  //   type: OrganigramVersion,
-  // })
-  // @ApiResponse({ status: 404, description: 'No se encontró versión activa.' })
-  // async getActiveVersion(): Promise<OrganigramVersion> {
-  //   return this.organigramVersionsService.getActiveVersion();
-  // }
   @Get('active')
   @ApiOperation({
     summary: 'Obtener información básica de la versión activa del organigrama',
