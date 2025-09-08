@@ -90,7 +90,7 @@ export class PeopleService {
     const baseFilters: any = {};
 
     const paginationOptions = {
-      searchFields: ['lastname', 'cuil'], // Ajustar según los campos del modelo
+      searchFields: ['lastname', 'cuil', 'person_type'], // campos a buscar
       defaultSort: 'lastname', // Ordenamiento por defecto
       selectFields: '-__v', // campos a excluir
     };
