@@ -366,6 +366,7 @@ export class OrganigramVersionsService {
           effective_date: version.effective_date.toISOString(),
           description: version.description,
           is_active: version.is_active,
+          decree_file_url: version.decree_file_url || undefined,
           created_at: (version as any).createdAt.toISOString(),
           updated_at: (version as any).updatedAt.toISOString(),
         },

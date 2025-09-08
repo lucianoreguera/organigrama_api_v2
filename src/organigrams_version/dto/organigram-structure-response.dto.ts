@@ -34,6 +34,7 @@ export class OrganigramVersionDto {
   effective_date: string;
   description?: string;
   is_active: boolean;
+  decree_file_url?: string;
   created_at: string;
   updated_at: string;
 }
