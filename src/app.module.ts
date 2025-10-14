@@ -13,6 +13,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { OrganigramsVersionModule } from './organigrams_version/organigrams_version.module';
+import { AppsModule } from './apps/apps.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { OrganigramsVersionModule } from './organigrams_version/organigrams_vers
     PeopleModule,
     DepartmentsModule,
     OrganigramsVersionModule,
+    AppsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
