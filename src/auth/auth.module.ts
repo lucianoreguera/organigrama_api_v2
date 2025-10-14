@@ -7,12 +7,14 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
 import { KeycloakAdminService } from './keycloak-admin.service';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
     ConfigModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({}),
+    UsersModule,
   ],
   providers: [AuthService, JwtStrategy, RolesGuard, KeycloakAdminService],
   controllers: [AuthController],

@@ -29,55 +29,55 @@ export class UsersController {
   /**
    * Obtener perfil del usuario actual
    */
-  @Get('me')
-  async getMyProfile(@CurrentUser() keycloakUser: any) {
-    // Sincronizar usuario con MongoDB
-    const user = await this.usersService.findOrCreateFromKeycloak(keycloakUser);
+  // @Get('me')
+  // async getMyProfile(@CurrentUser() keycloakUser: any) {
+  //   // Sincronizar usuario con MongoDB
+  //   const user = await this.usersService.findOrCreateFromKeycloak(keycloakUser);
 
-    return {
-      keycloak: {
-        userId: keycloakUser.userId,
-        username: keycloakUser.username,
-        email: keycloakUser.email,
-        firstName: keycloakUser.firstName,
-        lastName: keycloakUser.lastName,
-        roles: keycloakUser.roles,
-        realmRoles: keycloakUser.realmRoles,
-      },
-      database: {
-        id: user._id,
-        metadata: user.metadata,
-        preferences: user.preferences,
-        department: user.department,
-        position: user.position,
-        phone: user.phone,
-        profilePicture: user.profilePicture,
-        lastLogin: user.lastLogin,
-        isActive: user.isActive,
-        // createdAt: user.createdAt,
-        // updatedAt: user.updatedAt,
-      },
-    };
-  }
+  //   return {
+  //     keycloak: {
+  //       userId: keycloakUser.userId,
+  //       username: keycloakUser.username,
+  //       email: keycloakUser.email,
+  //       firstName: keycloakUser.firstName,
+  //       lastName: keycloakUser.lastName,
+  //       roles: keycloakUser.roles,
+  //       realmRoles: keycloakUser.realmRoles,
+  //     },
+  //     database: {
+  //       id: user._id,
+  //       metadata: user.metadata,
+  //       preferences: user.preferences,
+  //       department: user.department,
+  //       position: user.position,
+  //       phone: user.phone,
+  //       profilePicture: user.profilePicture,
+  //       lastLogin: user.lastLogin,
+  //       isActive: user.isActive,
+  //       // createdAt: user.createdAt,
+  //       // updatedAt: user.updatedAt,
+  //     },
+  //   };
+  // }
 
   /**
    * Actualizar metadata del usuario actual
    */
-  @Put('me')
-  async updateMyProfile(
-    @CurrentUser() keycloakUser: any,
-    @Body() updateData: UpdateUserMetadataDto,
-  ) {
-    const updatedUser = await this.usersService.updateUserMetadata(
-      keycloakUser.userId,
-      updateData,
-    );
+  // @Put('me')
+  // async updateMyProfile(
+  //   @CurrentUser() keycloakUser: any,
+  //   @Body() updateData: UpdateUserMetadataDto,
+  // ) {
+  //   const updatedUser = await this.usersService.updateUserMetadata(
+  //     keycloakUser.userId,
+  //     updateData,
+  //   );
 
-    return {
-      message: 'Perfil actualizado correctamente',
-      user: updatedUser,
-    };
-  }
+  //   return {
+  //     message: 'Perfil actualizado correctamente',
+  //     user: updatedUser,
+  //   };
+  // }
 
   /**
    * Obtener todos los usuarios con filtros (solo admin)
@@ -110,103 +110,103 @@ export class UsersController {
   /**
    * Obtener estadísticas de usuarios (solo admin)
    */
-  @Get('stats')
-  @UseGuards(RolesGuard)
-  @RequireRoles('admin')
-  async getUserStats() {
-    return this.usersService.getUserStats();
-  }
+  // @Get('stats')
+  // @UseGuards(RolesGuard)
+  // @RequireRoles('admin')
+  // async getUserStats() {
+  //   return this.usersService.getUserStats();
+  // }
 
   /**
    * Obtener usuarios inactivos (solo admin)
    */
-  @Get('inactive')
-  @UseGuards(RolesGuard)
-  @RequireRoles('admin')
-  async getInactiveUsers(
-    @Query('days', new DefaultValuePipe(30), ParseIntPipe) days: number,
-  ) {
-    if (days < 1 || days > 365) {
-      throw new BadRequestException('Los días deben estar entre 1 y 365');
-    }
+  // @Get('inactive')
+  // @UseGuards(RolesGuard)
+  // @RequireRoles('admin')
+  // async getInactiveUsers(
+  //   @Query('days', new DefaultValuePipe(30), ParseIntPipe) days: number,
+  // ) {
+  //   if (days < 1 || days > 365) {
+  //     throw new BadRequestException('Los días deben estar entre 1 y 365');
+  //   }
 
-    const users = await this.usersService.getInactiveUsers(days);
-    return {
-      message: `Usuarios inactivos por más de ${days} días`,
-      count: users.length,
-      users,
-    };
-  }
+  //   const users = await this.usersService.getInactiveUsers(days);
+  //   return {
+  //     message: `Usuarios inactivos por más de ${days} días`,
+  //     count: users.length,
+  //     users,
+  //   };
+  // }
 
   /**
    * Buscar usuarios por rol (solo admin)
    */
-  @Get('by-role/:role')
-  @UseGuards(RolesGuard)
-  @RequireRoles('admin')
-  async getUsersByRole(@Param('role') role: string) {
-    const users = await this.usersService.findByRole(role);
-    return {
-      role,
-      count: users.length,
-      users,
-    };
-  }
+  // @Get('by-role/:role')
+  // @UseGuards(RolesGuard)
+  // @RequireRoles('admin')
+  // async getUsersByRole(@Param('role') role: string) {
+  //   const users = await this.usersService.findByRole(role);
+  //   return {
+  //     role,
+  //     count: users.length,
+  //     users,
+  //   };
+  // }
 
   /**
    * Buscar usuarios por departamento (solo admin)
    */
-  @Get('by-department/:department')
-  @UseGuards(RolesGuard)
-  @RequireRoles('admin')
-  async getUsersByDepartment(@Param('department') department: string) {
-    const users = await this.usersService.findByDepartment(department);
-    return {
-      department,
-      count: users.length,
-      users,
-    };
-  }
+  // @Get('by-department/:department')
+  // @UseGuards(RolesGuard)
+  // @RequireRoles('admin')
+  // async getUsersByDepartment(@Param('department') department: string) {
+  //   const users = await this.usersService.findByDepartment(department);
+  //   return {
+  //     department,
+  //     count: users.length,
+  //     users,
+  //   };
+  // }
 
   /**
    * Obtener perfil de un usuario específico por username (solo admin)
    */
-  @Get(':username')
-  @UseGuards(RolesGuard)
-  @RequireRoles('admin')
-  async getUserProfile(@Param('username') username: string) {
-    const user = await this.usersService.findByUsername(username);
-    if (!user) {
-      throw new BadRequestException('Usuario no encontrado');
-    }
-    return user;
-  }
+  // @Get(':username')
+  // @UseGuards(RolesGuard)
+  // @RequireRoles('admin')
+  // async getUserProfile(@Param('username') username: string) {
+  //   const user = await this.usersService.findByUsername(username);
+  //   if (!user) {
+  //     throw new BadRequestException('Usuario no encontrado');
+  //   }
+  //   return user;
+  // }
 
   /**
    * Actualizar metadata de un usuario específico (solo admin)
    */
-  @Put(':username')
-  @UseGuards(RolesGuard)
-  @RequireRoles('admin')
-  async updateUserProfile(
-    @Param('username') username: string,
-    @Body() updateData: UpdateUserMetadataDto,
-  ) {
-    const user = await this.usersService.findByUsername(username);
-    if (!user) {
-      throw new BadRequestException('Usuario no encontrado');
-    }
+  // @Put(':username')
+  // @UseGuards(RolesGuard)
+  // @RequireRoles('admin')
+  // async updateUserProfile(
+  //   @Param('username') username: string,
+  //   @Body() updateData: UpdateUserMetadataDto,
+  // ) {
+  //   const user = await this.usersService.findByUsername(username);
+  //   if (!user) {
+  //     throw new BadRequestException('Usuario no encontrado');
+  //   }
 
-    const updatedUser = await this.usersService.updateUserMetadata(
-      user.keycloakId,
-      updateData,
-    );
+  //   const updatedUser = await this.usersService.updateUserMetadata(
+  //     user.keycloakId,
+  //     updateData,
+  //   );
 
-    return {
-      message: 'Usuario actualizado correctamente',
-      user: updatedUser,
-    };
-  }
+  //   return {
+  //     message: 'Usuario actualizado correctamente',
+  //     user: updatedUser,
+  //   };
+  // }
 
   /**
    * Desactivar usuario (solo admin)
@@ -258,25 +258,25 @@ export class UsersController {
   /**
    * Eliminar usuario permanentemente (solo admin) - usar con extrema precaución
    */
-  @Delete(':username')
-  @UseGuards(RolesGuard)
-  @RequireRoles('admin')
-  @HttpCode(HttpStatus.OK)
-  async deleteUser(@Param('username') username: string) {
-    const user = await this.usersService.findByUsername(username);
-    if (!user) {
-      throw new BadRequestException('Usuario no encontrado');
-    }
+  // @Delete(':username')
+  // @UseGuards(RolesGuard)
+  // @RequireRoles('admin')
+  // @HttpCode(HttpStatus.OK)
+  // async deleteUser(@Param('username') username: string) {
+  //   const user = await this.usersService.findByUsername(username);
+  //   if (!user) {
+  //     throw new BadRequestException('Usuario no encontrado');
+  //   }
 
-    const deleted = await this.usersService.deleteUser(user.keycloakId);
+  //   const deleted = await this.usersService.deleteUser(user.keycloakId);
 
-    if (deleted) {
-      return {
-        message: 'Usuario eliminado permanentemente',
-        username,
-      };
-    } else {
-      throw new BadRequestException('No se pudo eliminar el usuario');
-    }
-  }
+  //   if (deleted) {
+  //     return {
+  //       message: 'Usuario eliminado permanentemente',
+  //       username,
+  //     };
+  //   } else {
+  //     throw new BadRequestException('No se pudo eliminar el usuario');
+  //   }
+  // }
 }
