@@ -18,6 +18,9 @@ export class User extends Document {
   @Prop()
   lastName?: string;
 
+  @Prop({ unique: true, sparse: true })
+  dni?: string;
+
   @Prop([String])
   roles: string[];
 
@@ -36,7 +39,7 @@ export class User extends Document {
   @Prop({ type: Object, default: {} })
   preferences: Record<string, any>;
 
-  // Campos adicionales específicos de tu aplicación
+  // Campos adicionales específicos de la aplicación
   @Prop()
   department?: string;
 
@@ -56,4 +59,5 @@ export const UserSchema = SchemaFactory.createForClass(User);
 UserSchema.index({ keycloakId: 1 });
 UserSchema.index({ username: 1 });
 UserSchema.index({ email: 1 });
+UserSchema.index({ dni: 1 });
 UserSchema.index({ isActive: 1 });
