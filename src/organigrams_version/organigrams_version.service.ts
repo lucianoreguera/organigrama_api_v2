@@ -23,6 +23,7 @@ import { LevelsService } from '../levels/levels.service';
 import { PeopleService } from '../people/people.service';
 import { CreateDepartmentDto } from '../departments/dto/create-department.dto';
 import { FileUploadService } from '../common/services/file-upload.service';
+import { CacheWarmingService } from '../public-organigram/cache-warming.service';
 
 interface FrontendToMongoIdMap {
   [frontendId: string]: Types.ObjectId;
@@ -41,6 +42,7 @@ export class OrganigramVersionsService {
     private readonly levelsService: LevelsService,
     private readonly peopleService: PeopleService,
     private readonly fileUploadService: FileUploadService,
+    private readonly cacheWarmingService: CacheWarmingService,
   ) {}
 
   async processAndCreateVersion(
@@ -902,6 +904,13 @@ export class OrganigramVersionsService {
           `Versión con ID ${versionId} no encontrada`,
         );
       }
+
+      // REFRESCAR TODO EL CACHE AUTOMÁTICAMENTE (no bloqueante)
+      this.cacheWarmingService.refreshAllCache(this).catch((error) => {
+        this.logger.error(
+          `Error refrescando cache después de activar versión: ${error.message}`,
+        );
+      });
 
       return version;
     } catch (error) {

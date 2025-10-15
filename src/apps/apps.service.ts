@@ -26,7 +26,7 @@ export class AppsService {
   }
 
   private generateAPIKey(): string {
-    const length = 12;
+    const length = 32;
     const charset =
       'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@$!%*?&';
     let apiKey = '';

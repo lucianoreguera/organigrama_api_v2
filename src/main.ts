@@ -48,6 +48,16 @@ async function bootstrap() {
       },
       'JWT-auth', // Este nombre se usa en los decoradores
     )
+    // Configuración para la API KEY
+    .addApiKey(
+      {
+        type: 'apiKey',
+        name: 'x-api-key',
+        in: 'header',
+        description: 'API Key para aplicaciones externas',
+      },
+      'api-key',
+    )
     .addServer('http://localhost:3000', 'Desarrollo')
     .addServer('https://apis.v1.cc.gob.ar/api_organigrama', 'Producción')
     .build();
