@@ -27,7 +27,8 @@ export class CreateUserDto {
     example: 'john.doe@example.com',
   })
   @IsEmail()
-  email: string;
+  @IsOptional()
+  email?: string;
 
   @ApiProperty({
     description: 'Nombre del usuario',

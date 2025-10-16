@@ -31,7 +31,7 @@ export class UsersService {
       user = new this.userModel({
         keycloakId: keycloakUser.userId,
         username: keycloakUser.username,
-        email: keycloakUser.email,
+        email: keycloakUser.email || '',
         firstName: keycloakUser.firstName,
         lastName: keycloakUser.lastName,
         roles: keycloakUser.roles || [],
@@ -44,7 +44,7 @@ export class UsersService {
       user.realmRoles = keycloakUser.realmRoles || [];
       user.firstName = keycloakUser.firstName;
       user.lastName = keycloakUser.lastName;
-      user.email = keycloakUser.email;
+      user.email = keycloakUser.email || '';
       user.lastLogin = new Date();
       await user.save();
     }
