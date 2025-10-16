@@ -9,8 +9,8 @@ export class User extends Document {
   @Prop({ required: true, unique: true })
   username: string;
 
-  @Prop({ unique: true })
-  email: string;
+  @Prop({ required: false, unique: true })
+  email?: string;
 
   @Prop()
   firstName?: string;
