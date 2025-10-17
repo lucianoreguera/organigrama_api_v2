@@ -8,7 +8,7 @@ import {
   Request,
   Get,
   Param,
-  Patch,
+  Put,
   Query,
   Delete,
   UploadedFile,
@@ -332,7 +332,7 @@ export class OrganigramVersionsController {
     return this.organigramVersionsService.getNodesByLevel(versionId, levelId);
   }
 
-  // @Patch(':versionId/activate')
+  // @Put(':versionId/activate')
   // // @Roles(Role.ADMIN)
   // @ApiOperation({
   //   summary: 'Activar una versión específica del organigrama.',
@@ -348,7 +348,7 @@ export class OrganigramVersionsController {
   // ): Promise<OrganigramVersion> {
   //   return this.organigramVersionsService.activateVersion(versionId);
   // }
-  @Patch(':versionId/activate')
+  @Put(':versionId/activate')
   @ApiOperation({
     summary: 'Activar una versión específica del organigrama.',
   })
@@ -364,7 +364,7 @@ export class OrganigramVersionsController {
     return this.organigramVersionsService.activateVersion(versionId);
   }
 
-  @Patch(':versionId/deactivate')
+  @Put(':versionId/deactivate')
   // @Roles(Role.ADMIN)
   @ApiOperation({
     summary: 'Desactivar una versión específica del organigrama.',
@@ -381,7 +381,7 @@ export class OrganigramVersionsController {
     return this.organigramVersionsService.deactivateVersion(versionId);
   }
 
-  @Patch(':versionId/nodes/:nodeId/assign-official')
+  @Put(':versionId/nodes/:nodeId/assign-official')
   @ApiOperation({
     summary: 'Asignar funcionario responsable a un nodo de departamento',
   })
@@ -399,7 +399,7 @@ export class OrganigramVersionsController {
     return this.organigramVersionsService.assignResponsibleOfficial(dto);
   }
 
-  @Patch(':versionId/nodes/:nodeId/assign-assessors')
+  @Put(':versionId/nodes/:nodeId/assign-assessors')
   @ApiOperation({
     summary: 'Asignar asesores a un nodo de departamento',
     description:
@@ -446,7 +446,7 @@ export class OrganigramVersionsController {
     return this.organigramVersionsService.assignAssessors(dto);
   }
 
-  @Patch(':versionId/nodes/:nodeId/add-assessors')
+  @Put(':versionId/nodes/:nodeId/add-assessors')
   @ApiOperation({
     summary: 'Agregar asesores adicionales a un nodo de departamento',
     description:
@@ -534,7 +534,7 @@ export class OrganigramVersionsController {
     );
   }
 
-  @Patch(':versionId/decree')
+  @Put(':versionId/decree')
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(FileInterceptor('decree_file'))
   @ApiConsumes('multipart/form-data')

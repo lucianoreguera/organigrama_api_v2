@@ -3,7 +3,7 @@ import {
   Get,
   Post,
   Body,
-  Patch,
+  Put,
   Param,
   Query,
   HttpCode,
@@ -152,7 +152,7 @@ export class DepartmentsController {
     return this.departmentsService.findOne(id);
   }
 
-  @Patch(':id')
+  @Put(':id')
   @ApiOperation({
     summary: 'Actualizar un departamento',
     description:
@@ -204,7 +204,7 @@ export class DepartmentsController {
     return this.departmentsService.update(id, updateDepartmentDto);
   }
 
-  @Patch(':id/change-status')
+  @Put(':id/change-status')
   @ApiOperation({
     summary: 'Cambiar estado del departamento',
     description:

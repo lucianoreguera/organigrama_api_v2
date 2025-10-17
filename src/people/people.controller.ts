@@ -3,7 +3,7 @@ import {
   Get,
   Post,
   Body,
-  Patch,
+  Put,
   Param,
   Delete,
   Query,
@@ -304,7 +304,7 @@ export class PeopleController {
     return this.peopleService.findOne(id);
   }
 
-  // @Patch(':id')
+  // @Put(':id')
   // @ApiOperation({
   //   summary: 'Actualizar una persona',
   //   description:
@@ -356,7 +356,7 @@ export class PeopleController {
   //   return this.peopleService.update(id, updatePersonDto);
   // }
 
-  @Patch(':id')
+  @Put(':id')
   @UseInterceptors(FileInterceptor('photo'))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
@@ -542,7 +542,7 @@ export class PeopleController {
     return this.peopleService.remove(id);
   }
 
-  @Patch(':id/photo')
+  @Put(':id/photo')
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(FileInterceptor('photo'))
   @ApiConsumes('multipart/form-data')

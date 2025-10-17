@@ -3,7 +3,7 @@ import {
   Get,
   Post,
   Body,
-  Patch,
+  Put,
   Param,
   Delete,
   Query,
@@ -160,7 +160,7 @@ export class LevelsController {
     return this.levelsService.findOne(term);
   }
 
-  @Patch(':id')
+  @Put(':id')
   @ApiOperation({
     summary: 'Actualizar un nivel',
     description: 'Actualiza parcialmente los datos de un nivel existente',
