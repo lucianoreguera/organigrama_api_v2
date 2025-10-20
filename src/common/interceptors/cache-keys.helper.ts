@@ -22,9 +22,9 @@ export class CacheKeys {
   /**
    * Genera la key para la estructura completa del organigrama activo
    */
-  static activeOrganigramStructure(): string {
-    return `${this.PREFIX}/api/v2/organigrams_version/active/structure`;
-  }
+  // static activeOrganigramStructure(): string {
+  //   return `${this.PREFIX}/api/v2/organigrams_version/active/structure`;
+  // }
 
   /**
    * Genera una cache key genérica basada en ruta y parámetros

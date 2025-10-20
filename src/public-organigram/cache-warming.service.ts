@@ -45,29 +45,29 @@ export class CacheWarmingService {
    * Pre-cachea la estructura completa del organigrama activo
    * (para backoffice y otros usos internos)
    */
-  async warmActiveOrganigramStructure(
-    organigramVersionsService: any,
-  ): Promise<void> {
-    try {
-      this.logger.log(
-        '🏗️  Pre-cacheando estructura completa del organigrama activo...',
-      );
+  // async warmActiveOrganigramStructure(
+  //   organigramVersionsService: any,
+  // ): Promise<void> {
+  //   try {
+  //     this.logger.log(
+  //       '🏗️  Pre-cacheando estructura completa del organigrama activo...',
+  //     );
 
-      const structure =
-        await organigramVersionsService.getActiveOrganigramStructure();
+  //     const structure =
+  //       await organigramVersionsService.getActiveOrganigramStructure();
 
-      const cacheKey = CacheKeys.activeOrganigramStructure();
-      await this.cacheManager.set(cacheKey, structure, this.TTL);
+  //     const cacheKey = CacheKeys.activeOrganigramStructure();
+  //     await this.cacheManager.set(cacheKey, structure, this.TTL);
 
-      this.logger.log('✅ Estructura completa del organigrama cacheada');
-      this.logger.debug(`🔑 Cache Key guardada: ${cacheKey}`);
-    } catch (error) {
-      this.logger.error(
-        `Error pre-cacheando estructura del organigrama: ${error.message}`,
-      );
-      throw error;
-    }
-  }
+  //     this.logger.log('✅ Estructura completa del organigrama cacheada');
+  //     this.logger.debug(`🔑 Cache Key guardada: ${cacheKey}`);
+  //   } catch (error) {
+  //     this.logger.error(
+  //       `Error pre-cacheando estructura del organigrama: ${error.message}`,
+  //     );
+  //     throw error;
+  //   }
+  // }
 
   /**
    * Pre-cachea TODO: endpoints públicos + estructura completa
@@ -80,7 +80,7 @@ export class CacheWarmingService {
       // Ejecutar ambos en paralelo para mayor velocidad
       await Promise.all([
         this.warmPublicOrganigramCache(),
-        this.warmActiveOrganigramStructure(organigramVersionsService),
+        // this.warmActiveOrganigramStructure(organigramVersionsService),
       ]);
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -214,7 +214,8 @@ export class CacheWarmingService {
   async refreshAllCache(organigramVersionsService: any): Promise<void> {
     this.logger.log('🔄 Refrescando TODO el cache...');
     await this.clearPublicCache();
-    await this.warmAllCache(organigramVersionsService);
+    // await this.warmAllCache(organigramVersionsService);
+    await this.warmPublicOrganigramCache();
     this.logger.log('✅ TODO el cache refrescado');
   }
 }

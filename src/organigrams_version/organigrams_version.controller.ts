@@ -214,7 +214,7 @@ export class OrganigramVersionsController {
   }
 
   @Get('active/structure')
-  @UseInterceptors(HttpCacheInterceptor)
+  // @UseInterceptors(HttpCacheInterceptor)
   @ApiOperation({
     summary:
       'Obtener la estructura completa de la versión activa del organigrama',

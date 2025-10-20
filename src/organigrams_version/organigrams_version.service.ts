@@ -906,11 +906,11 @@ export class OrganigramVersionsService {
       }
 
       // REFRESCAR TODO EL CACHE AUTOMÁTICAMENTE (no bloqueante)
-      this.cacheWarmingService.refreshAllCache(this).catch((error) => {
-        this.logger.error(
-          `Error refrescando cache después de activar versión: ${error.message}`,
-        );
-      });
+      // this.cacheWarmingService.refreshAllCache(this).catch((error) => {
+      //   this.logger.error(
+      //     `Error refrescando cache después de activar versión: ${error.message}`,
+      //   );
+      // });
 
       return version;
     } catch (error) {
