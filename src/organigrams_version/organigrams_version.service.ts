@@ -1007,6 +1007,13 @@ export class OrganigramVersionsService {
       this.validateAssessors(assessorIds),
     ]);
 
+    // Validar que los asesores no estén asignados a otros nodos
+    await this.validateAssessorsNotAssignedToOtherNodes(
+      assessorIds,
+      nodeId,
+      versionId,
+    );
+
     // Actualizar el nodo con los asesores
     await this.updateNodeAssessors(nodeId, assessorIds);
 
@@ -1015,6 +1022,101 @@ export class OrganigramVersionsService {
     );
 
     return version;
+  }
+
+  /**
+   * Valida que los asesores no estén asignados a otros nodos en la misma versión
+   */
+  private async validateAssessorsNotAssignedToOtherNodes(
+    assessorIds: string[],
+    currentNodeId: string,
+    versionId: string,
+  ): Promise<void> {
+    const assessorObjectIds = assessorIds.map((id) => new Types.ObjectId(id));
+
+    // 1. Encontrar nodos *diferentes* al actual, en la misma versión,
+    // que ya tengan asignado *al menos uno* de los asesores que se intenta asignar.
+    const nodesInConflict = await this.departmentNodeModel
+      .find({
+        version: new Types.ObjectId(versionId), // Misma versión
+        _id: { $ne: new Types.ObjectId(currentNodeId) }, // Excluir el nodo actual
+        // Buscar cualquier nodo donde el array 'assigned_assessors' contenga
+        // alguno de los IDs en 'assessorObjectIds'
+        assigned_assessors: { $in: assessorObjectIds },
+      })
+      // Solo necesitamos el ID del nodo y el departamento (para el nombre en el error)
+      .select('_id department')
+      .populate('department', 'name') // Usamos populate para obtener el nombre del departamento
+      .lean();
+
+    if (nodesInConflict.length === 0) {
+      return; // No hay conflictos
+    }
+
+    // 2. Procesar los conflictos encontrados
+    const conflictedAssessorIds: string[] = [];
+    const nodeConflictsMap = new Map<string, string>(); // Map<assessorId, nodeName>
+
+    // Obtener todos los IDs de asesores que ya están asignados en los nodos conflictivos
+    // (aunque el query solo trae los nodos, no la lista filtrada de asesores)
+    const conflictNodeIds = nodesInConflict.map((node) => node._id);
+
+    // Segunda consulta: Obtener solo los asesores de esos nodos conflictivos.
+    // Aunque es una segunda consulta, el filtro es muy específico.
+    const conflictNodesWithAssessors = await this.departmentNodeModel
+      .find({ _id: { $in: conflictNodeIds } })
+      .select('assigned_assessors department')
+      .populate('department', 'name')
+      .lean();
+
+    for (const node of conflictNodesWithAssessors) {
+      // Asegurarse de que el departamento esté poblado y tenga nombre, o usar el ID
+      const nodeName = (node.department as any)?.name || node._id.toString();
+
+      for (const assessorId of node.assigned_assessors || []) {
+        const assessorIdStr = assessorId.toString();
+        // Solo nos interesan los IDs que intentamos asignar
+        if (
+          assessorIds.includes(assessorIdStr) &&
+          !nodeConflictsMap.has(assessorIdStr)
+        ) {
+          nodeConflictsMap.set(assessorIdStr, nodeName);
+          conflictedAssessorIds.push(assessorIdStr);
+        }
+      }
+    }
+
+    if (nodeConflictsMap.size > 0) {
+      // 3. Obtener los nombres de los asesores para el mensaje de error
+      // Asumo que tienes un servicio para buscar personas por ID (peopleService o usersRepository)
+      // Como tu código original usa this.usersRepository.findOne, usaré this.peopleService.findOne
+      // basado en la inyección de dependencias que muestras.
+      const conflictedAssessors = await Promise.all(
+        Array.from(nodeConflictsMap.keys()).map((id) =>
+          this.peopleService.findOne(id),
+        ),
+      );
+
+      const conflicts = Array.from(nodeConflictsMap.entries()).map(
+        ([assessorId, nodeName]) => {
+          const assessor = conflictedAssessors.find(
+            (a) => a && (a._id as Types.ObjectId).toString() === assessorId,
+          );
+          const assessorName =
+            assessor?.firstname && assessor?.lastname
+              ? `${assessor.firstname} ${assessor.lastname}`
+              : assessorId;
+
+          return `${assessorName} ya está asignado al departamento ${nodeName}`;
+        },
+      );
+
+      throw new BadRequestException({
+        message:
+          'No se pueden asignar los asesores porque ya están asignados a otros departamentos',
+        errors: conflicts,
+      });
+    }
   }
 
   private async validateAssessors(assessorIds: string[]): Promise<any[]> {
