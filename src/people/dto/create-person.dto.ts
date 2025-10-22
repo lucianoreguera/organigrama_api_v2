@@ -120,9 +120,7 @@ export class CreatePersonDto {
     maxLength: 150,
   })
   @ValidateIf((o) => o.person_type === PersonType.OFFICIAL)
-  @IsNotEmpty({
-    message: 'El título del puesto es requerido para un funcionario',
-  })
+  @IsOptional()
   @IsString()
   @MaxLength(150, { message: 'El título no puede exceder los 150 caracteres' })
   job_title_text?: string;
@@ -133,9 +131,7 @@ export class CreatePersonDto {
     maxLength: 150,
   })
   @ValidateIf((o) => o.person_type === PersonType.ASSESSOR)
-  @IsNotEmpty({
-    message: 'El área de especialización es requerida para un asesor',
-  })
+  @IsOptional()
   @IsString()
   @MaxLength(150, {
     message: 'El área de especialización no puede exceder los 150 caracteres',
