@@ -68,20 +68,18 @@ export class CreatePersonDto {
     format: 'email',
     maxLength: 100,
   })
-  @IsOptional()
   @IsEmail({}, { message: 'El correo electrónico debe ser válido' })
   @MaxLength(100, { message: 'El email no puede exceder los 100 caracteres' })
-  email?: string;
+  email: string;
 
   @ApiPropertyOptional({
     description: 'Número de teléfono de contacto',
     example: '+54 9 383 123-4567',
     maxLength: 20,
   })
-  @IsOptional()
   @IsString()
   @MaxLength(20, { message: 'El teléfono no puede exceder los 20 caracteres' })
-  phone_number?: string;
+  phone_number: string;
 
   @ApiPropertyOptional({
     description: 'URL de la foto de perfil de la persona',
