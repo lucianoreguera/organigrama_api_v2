@@ -14,9 +14,9 @@ export class Level extends Document {
   @Prop({
     required: true,
     unique: true,
-    set: (value: string) => value.trim().toLowerCase(),
+    set: (value: string | number) => String(value).trim(),
   })
-  level: number;
+  level: string;
 
   @Prop({
     required: false,

@@ -38,34 +38,40 @@ export class PublicOrganigramService {
   }
 
   /**
-   * Obtiene el nivel "secretaría"
+   * Obtiene los niveles 1 y 2 (secretaría)
+   * Como level se guarda como string, buscamos por los valores string '1' y '2'
    */
-  private async getSecretariaLevel(): Promise<Level> {
-    const level = await this.levelModel.findOne({ name: 'secretaría' }).lean();
+  private async getSecretariaLevels(): Promise<Level[]> {
+    const levels = await this.levelModel
+      .find({
+        level: { $in: ['1', '2'] },
+      })
+      .lean();
 
-    if (!level) {
-      throw new NotFoundException('No se encontró el nivel "secretaría"');
+    if (!levels || levels.length === 0) {
+      throw new NotFoundException('No se encontraron los niveles 1 y 2');
     }
 
-    return level;
+    return levels;
   }
 
   /**
-   * Lista todas las secretarías de la versión activa
+   * Lista todas las secretarías de la versión activa (niveles 1 y 2)
    */
   async getAllSecretarias(): Promise<SecretariaResponseDto[]> {
-    this.logger.log('Obteniendo todas las secretarías');
+    this.logger.log('Obteniendo todas las secretarías (niveles 1 y 2)');
 
     const activeVersion = await this.getActiveVersion();
-    const secretariaLevel = await this.getSecretariaLevel();
+    const secretariaLevels = await this.getSecretariaLevels();
+    const levelIds = secretariaLevels.map((level) => level._id);
 
     const secretarias = await this.departmentNodeModel
       .find({
         version: activeVersion._id,
-        level_id: secretariaLevel._id,
+        level_id: { $in: levelIds },
       })
       .populate('department', 'name code objective')
-      .sort({ 'department.name': 1 })
+      .sort({ depth: 1, 'department.name': 1 })
       .lean();
 
     this.logger.log(`Se encontraron ${secretarias.length} secretarías`);
@@ -74,12 +80,13 @@ export class PublicOrganigramService {
       id: (node._id as Types.ObjectId).toString(),
       nombre: (node.department as any).name,
       codigo: (node.department as any).code || undefined,
-      objetivo: (node.department as any).objective || undefined,
+      objetivo: (node.department as any).objetivo || undefined,
     }));
   }
 
   /**
    * Obtiene todos los descendientes de una secretaría de forma plana
+   * Si el nodo no tiene hijos (es nivel 1 sin descendientes), devuelve el mismo nodo
    */
   async getSecretariaChildren(
     secretariaId: string,
@@ -88,10 +95,11 @@ export class PublicOrganigramService {
       `Obteniendo todos los hijos de la secretaría ${secretariaId}`,
     );
 
-    // Validar que el nodo existe y es una secretaría
+    // Validar que el nodo existe y es de nivel 1 o 2
     const secretariaNode = await this.departmentNodeModel
       .findById(secretariaId)
-      .populate('level_id', 'name')
+      .populate('level_id', 'name level')
+      .populate('department', 'name code objective')
       .lean();
 
     if (!secretariaNode) {
@@ -100,10 +108,12 @@ export class PublicOrganigramService {
       );
     }
 
-    const levelName = (secretariaNode.level_id as any)?.name?.toLowerCase();
-    if (levelName !== 'secretaría') {
+    // Convertir level a string para comparación (por si acaso viene como número)
+    const levelValue = String((secretariaNode.level_id as any)?.level);
+
+    if (!['1', '2'].includes(levelValue)) {
       throw new NotFoundException(
-        `El nodo ${secretariaId} no corresponde a una secretaría`,
+        `El nodo ${secretariaId} no corresponde a un nivel 1 o 2 (nivel actual: ${levelValue})`,
       );
     }
 
@@ -112,6 +122,24 @@ export class PublicOrganigramService {
       secretariaId,
       secretariaNode.version,
     );
+
+    // Si no tiene descendientes, devolver el mismo nodo
+    if (descendants.length === 0) {
+      this.logger.log(
+        `El nodo ${secretariaId} no tiene hijos, devolviendo el mismo nodo`,
+      );
+
+      return [
+        {
+          id: (secretariaNode._id as Types.ObjectId).toString(),
+          nombre: (secretariaNode.department as any).name,
+          codigo: (secretariaNode.department as any).code || undefined,
+          nivel: (secretariaNode.level_id as any)?.name || '',
+          path_jerarquico: secretariaNode.hierarchical_path || undefined,
+          profundidad: secretariaNode.depth || 0,
+        },
+      ];
+    }
 
     this.logger.log(
       `Se encontraron ${descendants.length} descendientes de la secretaría`,
