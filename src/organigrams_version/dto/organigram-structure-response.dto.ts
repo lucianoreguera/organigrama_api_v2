@@ -12,6 +12,7 @@ export class DepartmentDataDto {
   name: string;
   code?: string;
   objective?: string;
+  address_text?: string;
 }
 
 export class OrganigramNodeDto {

@@ -38,15 +38,9 @@ import {
   ApiQuery,
   ApiConsumes,
 } from '@nestjs/swagger';
-// import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-// import { RolesGuard } from '../auth/guards/roles.guard';
-// import { Roles } from '../auth/decorators/roles.decorator';
-// import { Role } from '../users/enums/role.enum';
-// import { User } from '../users/entities/user.entity';
 import { ParseMongoIdPipe } from '../common/pipes/parse-mongo-id.pipe';
 import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { HttpCacheInterceptor } from '../common/interceptors/http-cache.interceptor';
 
 @ApiTags('Organigrama (Versiones)')
 @Controller('organigram-versions')

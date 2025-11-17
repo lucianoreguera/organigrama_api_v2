@@ -345,7 +345,7 @@ export class OrganigramVersionsService {
       // Obtener todos los nodos de la versión con populate COMPLETO incluyendo level
       const nodes = await this.departmentNodeModel
         .find({ version: new Types.ObjectId(versionId) })
-        .populate('department', 'name code objective')
+        .populate('department', 'name code objective address_text')
         .populate('level_id', 'name level') // *** INCLUIR 'level' EN EL POPULATE ***
         .populate(
           'responsible_official',
@@ -429,6 +429,7 @@ export class OrganigramVersionsService {
             name: (node.department as any)?.name || 'Sin nombre',
             code: (node.department as any)?.code || '',
             objective: (node.department as any)?.objective || '',
+            address_text: (node.department as any)?.address_text || '',
           },
           level_id: node.level_id
             ? ((node.level_id as any)?._id as Types.ObjectId)?.toString() || ''
@@ -523,7 +524,7 @@ export class OrganigramVersionsService {
       // Primero obtener el nodo raíz
       const rootNode = await this.departmentNodeModel
         .findById(nodeId)
-        .populate('department', 'name code objective')
+        .populate('department', 'name code objective address_text')
         .populate('level_id', 'name level')
         .populate(
           'responsible_official',
@@ -549,7 +550,7 @@ export class OrganigramVersionsService {
             version: rootNode.version,
             parent_node: new Types.ObjectId(parentNodeId),
           })
-          .populate('department', 'name code objective')
+          .populate('department', 'name code objective address_text')
           .populate('level_id', 'name level')
           .populate(
             'responsible_official',
@@ -591,6 +592,7 @@ export class OrganigramVersionsService {
           name: (rootNode.department as any)?.name || 'Sin nombre',
           code: (rootNode.department as any)?.code || '',
           objective: (rootNode.department as any)?.objective || '',
+          address_text: (rootNode.department as any)?.address_text || '',
         },
         level_id: rootNode.level_id
           ? ((rootNode.level_id as any)?._id as Types.ObjectId)?.toString() ||
@@ -652,6 +654,7 @@ export class OrganigramVersionsService {
             name: (descendant.department as any)?.name || 'Sin nombre',
             code: (descendant.department as any)?.code || '',
             objective: (descendant.department as any)?.objective || '',
+            address_text: (descendant.department as any)?.address_text || '',
           },
           level_id: descendant.level_id
             ? (
@@ -750,7 +753,7 @@ export class OrganigramVersionsService {
         version: new Types.ObjectId(versionId),
         level_id: new Types.ObjectId(levelId),
       })
-      .populate('department', 'name code objective')
+      .populate('department', 'name code objective address_text')
       .populate('level_id', 'name level') // *** INCLUIR 'level' ***
       .populate(
         'responsible_official',
@@ -771,6 +774,7 @@ export class OrganigramVersionsService {
         name: (node.department as any).name,
         code: (node.department as any).code || '',
         objective: (node.department as any).objective || '',
+        address_text: (node.department as any).address_text || '',
       },
       level_id: node.level_id
         ? ((node.level_id as any)._id as Types.ObjectId).toString()
@@ -811,7 +815,7 @@ export class OrganigramVersionsService {
   async getDirectChildren(nodeId: string): Promise<OrganigramNodeDto[]> {
     const children = await this.departmentNodeModel
       .find({ parent_node: new Types.ObjectId(nodeId) })
-      .populate('department', 'name code objective')
+      .populate('department', 'name code objective address_text')
       .populate('level_id', 'name level') // *** INCLUIR 'level' ***
       .populate(
         'responsible_official',
@@ -833,6 +837,7 @@ export class OrganigramVersionsService {
         name: (node.department as any).name,
         code: (node.department as any).code || '',
         objective: (node.department as any).objective || '',
+        address_text: (node.department as any).address_text || '',
       },
       level_id: node.level_id
         ? ((node.level_id as any)._id as Types.ObjectId).toString()
