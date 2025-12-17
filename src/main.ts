@@ -24,8 +24,8 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v2');
 
   app.enableCors({
-    origin: true, // Permite cualquier origen
-    credentials: true, // Puede enviar cookies/tokens
+    origin: '*', // Permite cualquier origen
+    credentials: false,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], // Permite cualquier método
     allowedHeaders: '*', //['Content-Type', 'Authorization'], // Permite encabezados especificos
   });

@@ -210,6 +210,20 @@ export class PeopleService {
     }
   }
 
+  async inactivate(id: string) {
+    const person = await this.findOne(id);
+    person.is_active = false;
+    await person.save();
+    return person;
+  }
+
+  async activate(id: string) {
+    const person = await this.findOne(id);
+    person.is_active = true;
+    await person.save();
+    return person;
+  }
+
   async remove(id: string) {
     const { deletedCount } = await this.peopleModel.deleteOne({ _id: id });
     if (deletedCount === 0)

@@ -15,6 +15,7 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  Patch,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -496,6 +497,70 @@ export class PeopleController {
     photo?: Express.Multer.File,
   ) {
     return this.peopleService.update(id, updatePersonDto, photo);
+  }
+
+  @Patch(':id/inactivate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Inactivar una persona',
+    description: 'Inactiva una persona del sistema',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID único de la persona en formato MongoDB ObjectId',
+    example: '507f1f77bcf86cd799439011',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Persona inactivada exitosamente',
+    type: PersonResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'ID de MongoDB inválido',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token de autenticación requerido o inválido',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Persona no encontrada',
+  })
+  inactivate(@Param('id', ParseMongoIdPipe) id: string) {
+    return this.peopleService.inactivate(id);
+  }
+
+  @Patch(':id/activate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Activar una persona',
+    description: 'Activa una persona del sistema',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID único de la persona en formato MongoDB ObjectId',
+    example: '507f1f77bcf86cd799439011',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Persona activada exitosamente',
+    type: PersonResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'ID de MongoDB inválido',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token de autenticación requerido o inválido',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Persona no encontrada',
+  })
+  activate(@Param('id', ParseMongoIdPipe) id: string) {
+    return this.peopleService.activate(id);
   }
 
   @Delete(':id')
