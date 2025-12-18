@@ -26,8 +26,10 @@ async function bootstrap() {
   app.enableCors({
     origin: '*', // Permite cualquier origen
     credentials: false,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], // Permite cualquier método
-    allowedHeaders: '*', //['Content-Type', 'Authorization'], // Permite encabezados especificos
+    // methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], // Permite cualquier método
+    // allowedHeaders: '*', //['Content-Type', 'Authorization'], // Permite encabezados especificos
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
   });
 
   // Configuración de Swagger
