@@ -25,9 +25,9 @@ import { ParseMongoIdPipe } from '../common/pipes/parse-mongo-id.pipe';
 
 @ApiTags('Público - Organigrama')
 @Controller('public/organigrama')
-@UseGuards(ApiKeyGuard)
+// @UseGuards(ApiKeyGuard)
 @UseInterceptors(HttpCacheInterceptor)
-@ApiSecurity('api-key')
+// @ApiSecurity('api-key')
 export class PublicOrganigramController {
   constructor(
     private readonly publicOrganigramService: PublicOrganigramService,
