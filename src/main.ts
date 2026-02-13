@@ -22,14 +22,23 @@ async function bootstrap() {
     }),
   );
 
+  // Configuración de CORS para permitir peticiones desde cualquier origen
   app.enableCors({
-    origin: '*',
+    origin: '*', // En producción, especifica los dominios permitidos
     credentials: false,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
-    exposedHeaders: ['Content-Type', 'Authorization', 'x-api-key'], // Añade esto
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'x-api-key',
+      'X-Api-Key', // Variación en capitalización
+      'Accept',
+      'Origin',
+    ],
+    exposedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
     preflightContinue: false,
     optionsSuccessStatus: 204,
+    maxAge: 3600, // Cache preflight por 1 hora
   });
 
   app.setGlobalPrefix('api/v2');
