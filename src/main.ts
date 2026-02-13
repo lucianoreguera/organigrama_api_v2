@@ -21,16 +21,18 @@ async function bootstrap() {
       },
     }),
   );
-  app.setGlobalPrefix('api/v2');
 
   app.enableCors({
-    origin: '*', // Permite cualquier origen
+    origin: '*',
     credentials: false,
-    // methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], // Permite cualquier método
-    // allowedHeaders: '*', //['Content-Type', 'Authorization'], // Permite encabezados especificos
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+    exposedHeaders: ['Content-Type', 'Authorization', 'x-api-key'], // Añade esto
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
+
+  app.setGlobalPrefix('api/v2');
 
   // Configuración de Swagger
   const config = new DocumentBuilder()
