@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Param,
-  UseGuards,
   UseInterceptors,
   Post,
 } from '@nestjs/common';
@@ -11,11 +10,9 @@ import {
   ApiOperation,
   ApiResponse,
   ApiParam,
-  ApiSecurity,
 } from '@nestjs/swagger';
 import { PublicOrganigramService } from './public-organigram.service';
 import { CacheWarmingService } from './cache-warming.service';
-import { ApiKeyGuard } from '../common/guards/api-key.guard';
 import { HttpCacheInterceptor } from '../common/interceptors/http-cache.interceptor';
 import {
   SecretariaResponseDto,
@@ -25,9 +22,7 @@ import { ParseMongoIdPipe } from '../common/pipes/parse-mongo-id.pipe';
 
 @ApiTags('Público - Organigrama')
 @Controller('public/organigrama')
-// @UseGuards(ApiKeyGuard)
 @UseInterceptors(HttpCacheInterceptor)
-// @ApiSecurity('api-key')
 export class PublicOrganigramController {
   constructor(
     private readonly publicOrganigramService: PublicOrganigramService,
@@ -38,23 +33,12 @@ export class PublicOrganigramController {
   @ApiOperation({
     summary: 'Listar todas las secretarías',
     description:
-      'Obtiene una lista de todas las secretarías del organigrama activo. Requiere API Key. Resultado en cache por 1 hora.',
+      'Obtiene una lista de todas las secretarías del organigrama activo. Resultado en cache por 1 hora.',
   })
   @ApiResponse({
     status: 200,
     description: 'Lista de secretarías obtenida exitosamente',
     type: [SecretariaResponseDto],
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'API Key inválida o no proporcionada',
-    schema: {
-      example: {
-        statusCode: 401,
-        message: 'API Key requerida',
-        error: 'Unauthorized',
-      },
-    },
   })
   @ApiResponse({
     status: 404,
@@ -75,7 +59,7 @@ export class PublicOrganigramController {
   @ApiOperation({
     summary: 'Listar todos los hijos de una secretaría',
     description:
-      'Obtiene una lista plana de todos los departamentos descendientes de una secretaría específica. Requiere API Key. Resultado en cache por 1 hora.',
+      'Obtiene una lista plana de todos los departamentos descendientes de una secretaría específica. Resultado en cache por 1 hora.',
   })
   @ApiParam({
     name: 'id',
@@ -95,17 +79,6 @@ export class PublicOrganigramController {
         statusCode: 400,
         message: 'ID inválido',
         error: 'Bad Request',
-      },
-    },
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'API Key inválida o no proporcionada',
-    schema: {
-      example: {
-        statusCode: 401,
-        message: 'API Key inválida',
-        error: 'Unauthorized',
       },
     },
   })

@@ -3,7 +3,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as express from 'express';
-import { corsMiddleware } from './common/middleware/cors.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,9 +11,13 @@ async function bootstrap() {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-  // IMPORTANTE: Aplicar middleware de CORS ANTES de cualquier otra configuración
-  // Esto asegura que se maneje correctamente incluso con reverse proxy
-  app.use(corsMiddleware);
+  // Configuración básica de CORS (Kong maneja autenticación)
+  app.enableCors({
+    origin: '*',
+    credentials: false,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -46,16 +49,6 @@ async function bootstrap() {
         in: 'header',
       },
       'JWT-auth', // Este nombre se usa en los decoradores
-    )
-    // Configuración para la API KEY
-    .addApiKey(
-      {
-        type: 'apiKey',
-        name: 'x-api-key',
-        in: 'header',
-        description: 'API Key para aplicaciones externas',
-      },
-      'api-key',
     )
     .addServer('http://localhost:3000', 'Desarrollo')
     .addServer('https://apis.v1.cc.gob.ar/api_organigrama', 'Producción')
