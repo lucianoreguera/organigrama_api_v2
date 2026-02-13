@@ -13,7 +13,6 @@ export class ApiKeyGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
 
-    // ⭐ ESTO ES LO ÚNICO QUE FALTABA - Permitir preflight CORS
     if (request.method === 'OPTIONS') {
       return true;
     }
