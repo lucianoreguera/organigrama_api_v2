@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as express from 'express';
+import { corsMiddleware } from './common/middleware/cors.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -10,6 +11,10 @@ async function bootstrap() {
   // Configurar límites de payload
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+  // IMPORTANTE: Aplicar middleware de CORS ANTES de cualquier otra configuración
+  // Esto asegura que se maneje correctamente incluso con reverse proxy
+  app.use(corsMiddleware);
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -21,25 +26,6 @@ async function bootstrap() {
       },
     }),
   );
-
-  // Configuración de CORS para permitir peticiones desde cualquier origen
-  app.enableCors({
-    origin: '*', // En producción, especifica los dominios permitidos
-    credentials: false,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'x-api-key',
-      'X-Api-Key', // Variación en capitalización
-      'Accept',
-      'Origin',
-    ],
-    exposedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
-    maxAge: 3600, // Cache preflight por 1 hora
-  });
 
   app.setGlobalPrefix('api/v2');
 
