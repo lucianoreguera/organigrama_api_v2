@@ -306,6 +306,32 @@ export class OrganigramVersionsController {
     return this.organigramVersionsService.getDirectChildren(nodeId);
   }
 
+  @Get('nodes/:nodeId/department-info')
+  @ApiOperation({
+    summary: 'Obtener nombre del departamento y nivel de un nodo',
+    description: 'Retorna únicamente el nombre del departamento y el nombre del nivel jerárquico del nodo especificado.',
+  })
+  @ApiParam({
+    name: 'nodeId',
+    description: 'ID del nodo de departamento',
+    example: '507f1f77bcf86cd799439012',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Información obtenida exitosamente.',
+    schema: {
+      type: 'object',
+      properties: {
+        department_name: { type: 'string', example: 'Secretaría de Educación' },
+        level_name: { type: 'string', example: 'Secretaría' },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Nodo no encontrado.' })
+  async getDepartmentInfoByNodeId(@Param('nodeId', ParseMongoIdPipe) nodeId: string) {
+    return this.organigramVersionsService.getDepartmentInfoByNodeId(nodeId);
+  }
+
   @Get(':versionId/level/:levelId/nodes')
   @ApiOperation({
     summary: 'Obtener todos los nodos de un nivel específico en una versión.',

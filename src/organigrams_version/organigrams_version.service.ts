@@ -6,8 +6,8 @@ import {
   InternalServerErrorException,
   ConflictException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
+import { Model, Types, Connection } from 'mongoose';
 import {
   CreateOrganigramVersionDto,
   DepartmentNodeInputDto,
@@ -38,6 +38,8 @@ export class OrganigramVersionsService {
     private readonly organigramVersionModel: Model<OrganigramVersion>,
     @InjectModel(DepartmentNode.name)
     private readonly departmentNodeModel: Model<DepartmentNode>,
+    @InjectConnection()
+    private readonly connection: Connection,
     private readonly departmentsService: DepartmentsService,
     private readonly levelsService: LevelsService,
     private readonly peopleService: PeopleService,
@@ -54,10 +56,14 @@ export class OrganigramVersionsService {
       `Iniciando procesamiento para nueva versión del organigrama: ${dto.version_tag}`,
     );
 
+    // Iniciar sesión de MongoDB para transacción
+    const session = await this.connection.startSession();
+
     try {
       let decree_file_url: string | undefined = undefined;
 
-      // 1. Subir archivo de decreto si se proporciona
+      // 1. Subir archivo de decreto ANTES de la transacción
+      // (MongoDB no puede hacer rollback de operaciones externas como archivos)
       if (decree_file) {
         try {
           this.logger.log(
@@ -78,57 +84,75 @@ export class OrganigramVersionsService {
             `Error al subir el archivo de decreto: ${uploadError.message}`,
             uploadError.stack,
           );
-          // Fallar completamente si hay error en el decreto para mantener consistencia
+          // Fallar antes de iniciar la transacción si hay error en el decreto
           throw new InternalServerErrorException(
             `Error al procesar el archivo de decreto: ${uploadError.message}`,
           );
         }
       }
 
-      // 2. Crear la nueva versión con decreto
-      const newVersionData = {
-        version_tag: dto.version_tag,
-        effective_date: new Date(dto.effective_date),
-        description: dto.description,
-        decree_file_url: decree_file_url, // Almacenar la URL directamente
-        is_active: true,
-        raw_input_tree: this.cleanObjectForSerialization({
-          nodes: dto.nodes,
-          metadata: {
-            created_from_dto: true,
-            node_count: dto.nodes?.length || 0,
-            timestamp: new Date().toISOString(),
-            has_decree_file: !!decree_file_url,
-          },
-        }),
-      };
+      // 2. Ejecutar todas las operaciones de BD dentro de una transacción
+      let createdVersion: OrganigramVersion;
 
-      const createdVersion =
-        await this.organigramVersionModel.create(newVersionData);
-      this.logger.log(`Nueva versión creada: ${createdVersion._id}`);
+      await session.withTransaction(async () => {
+        // 2a. Crear la nueva versión dentro de la transacción
+        const newVersionData = {
+          version_tag: dto.version_tag,
+          effective_date: new Date(dto.effective_date),
+          description: dto.description,
+          decree_file_url: decree_file_url,
+          is_active: true,
+          raw_input_tree: this.cleanObjectForSerialization({
+            nodes: dto.nodes,
+            metadata: {
+              created_from_dto: true,
+              node_count: dto.nodes?.length || 0,
+              timestamp: new Date().toISOString(),
+              has_decree_file: !!decree_file_url,
+            },
+          }),
+        };
 
-      // 3. Procesar nodos del árbol con asignación de personas
-      const frontendIdToMongoIdMap: FrontendToMongoIdMap = {};
-      await this.processNodeRecursiveWithPeople(
-        dto.nodes,
-        createdVersion._id as Types.ObjectId,
-        null,
-        frontendIdToMongoIdMap,
-      );
+        const versions = await this.organigramVersionModel.create(
+          [newVersionData],
+          { session },
+        );
+        createdVersion = versions[0];
+        this.logger.log(`Nueva versión creada: ${createdVersion._id}`);
 
-      this.logger.log('Procesamiento completado exitosamente.');
-      return createdVersion;
+        // 2b. Procesar nodos del árbol dentro de la transacción
+        const frontendIdToMongoIdMap: FrontendToMongoIdMap = {};
+        await this.processNodeRecursiveWithPeople(
+          dto.nodes,
+          createdVersion._id as Types.ObjectId,
+          null,
+          frontendIdToMongoIdMap,
+          '',
+          session,
+        );
+
+        this.logger.log(
+          'Todos los nodos procesados exitosamente dentro de la transacción.',
+        );
+      });
+
+      // 3. Transacción completada exitosamente
+      await session.endSession();
+      this.logger.log('Transacción completada. Procesamiento exitoso.');
+      return createdVersion!;
     } catch (error) {
+      // La transacción se hace rollback automáticamente en caso de error
+      await session.endSession();
+
       this.logger.error(
         `Error durante la creación: ${error.message}`,
         error.stack,
       );
 
-      // Si hubo error después de subir el decreto, idealmente deberíamos eliminarlo
-      // Esto requeriría un método deleteFile en el FileUploadService
+      // Si hubo error después de subir el decreto, quedará huérfano
       if (decree_file) {
         this.logger.warn(
-          'Se subió un archivo de decreto pero falló la creación de la versión. Considera implementar limpieza de archivos huérfanos.',
+          'Se subió un archivo de decreto pero falló la transacción. El archivo quedará huérfano (considera implementar limpieza de archivos huérfanos).',
         );
       }
 
@@ -875,6 +899,25 @@ export class OrganigramVersionsService {
     }));
   }
 
+  async getDepartmentInfoByNodeId(
+    nodeId: string,
+  ): Promise<{ departmento: string; nivel: string }> {
+    const node = await this.departmentNodeModel
+      .findById(nodeId)
+      .populate('department', 'name')
+      .populate('level_id', 'name')
+      .lean();
+
+    if (!node) {
+      throw new NotFoundException(`Nodo con ID ${nodeId} no encontrado`);
+    }
+
+    return {
+      departmento: (node.department as any)?.name || '',
+      nivel: (node.level_id as any)?.name || '',
+    };
+  }
+
   async deactivateVersion(versionId: string): Promise<OrganigramVersion> {
     const version = await this.organigramVersionModel.findByIdAndUpdate(
       versionId,
@@ -910,12 +953,19 @@ export class OrganigramVersionsService {
         );
       }
 
-      // REFRESCAR TODO EL CACHE AUTOMÁTICAMENTE (no bloqueante)
-      // this.cacheWarmingService.refreshAllCache(this).catch((error) => {
-      //   this.logger.error(
-      //     `Error refrescando cache después de activar versión: ${error.message}`,
-      //   );
-      // });
+      // Refrescar cache público automáticamente (no bloqueante)
+      this.cacheWarmingService
+        .refreshPublicCache()
+        .then(() => {
+          this.logger.log(
+            '✅ Cache público refrescado después de activar versión',
+          );
+        })
+        .catch((error) => {
+          this.logger.error(
+            `⚠️ Error refrescando cache después de activar versión: ${error.message}`,
+          );
+        });
 
       return version;
     } catch (error) {
@@ -1282,6 +1332,7 @@ export class OrganigramVersionsService {
     parentMongoId: Types.ObjectId | null,
     frontendIdToMongoIdMap: FrontendToMongoIdMap,
     parentHierarchicalPath: string = '',
+    session: any,
   ): Promise<void> {
     for (const nodeInput of nodes) {
       let departmentRecord: any = null;
@@ -1306,14 +1357,14 @@ export class OrganigramVersionsService {
         );
       }
 
-      // 3. Validar que no exista conflicto jerárquico
+      // 3. Validar que no exista conflicto jerárquico (CON SESSION)
       if (departmentRecord) {
-        const existingNodeWithSameDept = await this.departmentNodeModel.findOne(
-          {
+        const existingNodeWithSameDept = await this.departmentNodeModel
+          .findOne({
             version: versionId,
             department: departmentRecord._id,
-          },
-        );
+          })
+          .session(session);
 
         if (existingNodeWithSameDept) {
           throw new ConflictException(
@@ -1374,7 +1425,7 @@ export class OrganigramVersionsService {
         );
       }
 
-      // Crear el DepartmentNode
+      // Crear el DepartmentNode (CON SESSION)
       const nodeDataToCreate = {
         version: versionId,
         department: new Types.ObjectId(departmentRecord._id as string),
@@ -1385,9 +1436,10 @@ export class OrganigramVersionsService {
         ui_hints: nodeInput.ui_hints || {},
       };
 
-      const createdNodes = await this.departmentNodeModel.create([
-        nodeDataToCreate,
-      ]);
+      const createdNodes = await this.departmentNodeModel.create(
+        [nodeDataToCreate],
+        { session },
+      );
       const newDepartmentNode = createdNodes[0];
 
       frontendIdToMongoIdMap[nodeInput.frontend_id] =
@@ -1397,7 +1449,7 @@ export class OrganigramVersionsService {
         `DepartmentNode creado: ${newDepartmentNode._id} para ${nodeInput.department_data.name} en path: ${expectedHierarchicalPath}`,
       );
 
-      // Procesar hijos recursivamente
+      // Procesar hijos recursivamente (CON SESSION)
       if (nodeInput.children && nodeInput.children.length > 0) {
         await this.processNodeRecursiveWithPeople(
           nodeInput.children,
@@ -1405,6 +1457,7 @@ export class OrganigramVersionsService {
           newDepartmentNode._id as Types.ObjectId,
           frontendIdToMongoIdMap,
           expectedHierarchicalPath,
+          session,
         );
       }
     }
