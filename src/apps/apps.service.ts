@@ -48,4 +48,17 @@ export class AppsService {
       .sort(() => Math.random() - 0.5)
       .join('');
   }
+
+  /**
+   * Valida si una API Key existe y está activa
+   * Método optimizado para el guard
+   */
+  async validateApiKey(apiKey: string): Promise<App | null> {
+    return this.appModel.findOne({
+      where: {
+        apiKey,
+        activo: true, // Asumiendo que tienes un campo 'activo'
+      },
+    });
+  }
 }
