@@ -1,16 +1,5 @@
-import {
-  Controller,
-  Get,
-  Param,
-  UseInterceptors,
-  Post,
-} from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-} from '@nestjs/swagger';
+import { Controller, Get, Param, UseInterceptors, Post } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { PublicOrganigramService } from './public-organigram.service';
 import { CacheWarmingService } from './cache-warming.service';
 import { HttpCacheInterceptor } from '../common/interceptors/http-cache.interceptor';
@@ -98,5 +87,34 @@ export class PublicOrganigramController {
     @Param('id', ParseMongoIdPipe) id: string,
   ): Promise<DepartmentFlatResponseDto[]> {
     return this.publicOrganigramService.getSecretariaChildren(id);
+  }
+
+  @Get('nodos/:nodeId/departamento-info')
+  @ApiOperation({
+    summary: 'Obtener nombre del departamento y nivel de un nodo',
+    description:
+      'Retorna únicamente el nombre del departamento y el nombre del nivel jerárquico del nodo especificado.',
+  })
+  @ApiParam({
+    name: 'nodeId',
+    description: 'ID del nodo de departamento',
+    example: '507f1f77bcf86cd799439012',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Información obtenida exitosamente.',
+    schema: {
+      type: 'object',
+      properties: {
+        department_name: { type: 'string', example: 'Secretaría de Educación' },
+        level_name: { type: 'string', example: 'Secretaría' },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Nodo no encontrado.' })
+  async getDepartmentInfoByNodeId(
+    @Param('nodeId', ParseMongoIdPipe) nodeId: string,
+  ) {
+    return this.publicOrganigramService.getDepartmentInfoByNodeId(nodeId);
   }
 }

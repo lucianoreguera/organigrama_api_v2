@@ -899,25 +899,6 @@ export class OrganigramVersionsService {
     }));
   }
 
-  async getDepartmentInfoByNodeId(
-    nodeId: string,
-  ): Promise<{ departmento: string; nivel: string }> {
-    const node = await this.departmentNodeModel
-      .findById(nodeId)
-      .populate('department', 'name')
-      .populate('level_id', 'name')
-      .lean();
-
-    if (!node) {
-      throw new NotFoundException(`Nodo con ID ${nodeId} no encontrado`);
-    }
-
-    return {
-      departmento: (node.department as any)?.name || '',
-      nivel: (node.level_id as any)?.name || '',
-    };
-  }
-
   async deactivateVersion(versionId: string): Promise<OrganigramVersion> {
     const version = await this.organigramVersionModel.findByIdAndUpdate(
       versionId,
