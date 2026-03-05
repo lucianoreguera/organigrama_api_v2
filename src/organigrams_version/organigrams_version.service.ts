@@ -975,6 +975,55 @@ export class OrganigramVersionsService {
     return version;
   }
 
+  async removeResponsibleOfficialFromNode(
+    versionId: string,
+    nodeId: string,
+  ): Promise<OrganigramVersion> {
+    // Validar existencia de entidades
+    const [version, node] = await Promise.all([
+      this.validateVersionExists(versionId),
+      this.validateNodeExists(nodeId),
+    ]);
+
+    // Remover el funcionario responsable
+    await this.removeNodeResponsible(nodeId);
+
+    this.logger.log(
+      `Funcionario responsable removido exitosamente del nodo ${nodeId}`,
+    );
+
+    // Refrescar cache público automáticamente (no bloqueante) si la versión es activa
+    if (version.is_active) {
+      this.cacheWarmingService
+        .refreshPublicCache()
+        .then(() => {
+          this.logger.log(
+            '✅ Cache público refrescado después de remover funcionario',
+          );
+        })
+        .catch((error) => {
+          this.logger.error(
+            `⚠️ Error refrescando cache después de remover funcionario: ${error.message}`,
+          );
+        });
+    }
+
+    return version;
+  }
+
+  private async removeNodeResponsible(nodeId: string): Promise<void> {
+    const result = await this.departmentNodeModel.updateOne(
+      { _id: nodeId },
+      { $unset: { responsible_official: "" } },
+    );
+
+    if (result.matchedCount === 0) {
+      throw new NotFoundException(
+        `No se pudo actualizar el nodo con ID ${nodeId}`,
+      );
+    }
+  }
+
   private async validateVersionExists(
     versionId: string,
   ): Promise<OrganigramVersion> {

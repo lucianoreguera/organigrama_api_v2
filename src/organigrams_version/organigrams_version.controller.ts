@@ -487,6 +487,41 @@ export class OrganigramVersionsController {
     return this.organigramVersionsService.addAssessorsToNode(dto);
   }
 
+  @Delete(':versionId/nodes/:nodeId/remove-official')
+  @ApiOperation({
+    summary: 'Remover funcionario responsable de un nodo de departamento',
+    description:
+      'Remueve el funcionario responsable asignado actualmente al nodo.',
+  })
+  @ApiParam({
+    name: 'versionId',
+    description: 'ID de la versión del organigrama',
+    example: '507f1f77bcf86cd799439011',
+  })
+  @ApiParam({
+    name: 'nodeId',
+    description: 'ID del nodo de departamento',
+    example: '507f1f77bcf86cd799439012',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Funcionario responsable removido exitosamente',
+    type: OrganigramVersion,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Versión o nodo no encontrado',
+  })
+  async removeResponsibleOfficialFromNode(
+    @Param('versionId', ParseMongoIdPipe) versionId: string,
+    @Param('nodeId', ParseMongoIdPipe) nodeId: string,
+  ): Promise<OrganigramVersion> {
+    return this.organigramVersionsService.removeResponsibleOfficialFromNode(
+      versionId,
+      nodeId,
+    );
+  }
+
   @Delete(':versionId/nodes/:nodeId/remove-assessors')
   @ApiOperation({
     summary: 'Remover asesores específicos de un nodo de departamento',
