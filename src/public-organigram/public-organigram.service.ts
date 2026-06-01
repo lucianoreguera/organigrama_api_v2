@@ -145,8 +145,19 @@ export class PublicOrganigramService {
       `Se encontraron ${descendants.length} descendientes de la secretaría`,
     );
 
-    return descendants
-      .sort((a, b) => {
+    const secretariaDto: DepartmentFlatResponseDto = {
+      id: (secretariaNode._id as Types.ObjectId).toString(),
+      nombre: (secretariaNode.department as any).name,
+      codigo: (secretariaNode.department as any).code || undefined,
+      nivel: (secretariaNode.level_id as any)?.name || '',
+      path_jerarquico: secretariaNode.hierarchical_path || undefined,
+      profundidad: secretariaNode.depth || 0,
+    };
+
+    return [
+      secretariaDto,
+      ...descendants
+        .sort((a, b) => {
         // Ordenar por profundidad y luego por nombre
         if (a.depth !== b.depth) {
           return a.depth - b.depth;
@@ -162,7 +173,8 @@ export class PublicOrganigramService {
         nivel: (node.level_id as any)?.name || '',
         path_jerarquico: node.hierarchical_path || undefined,
         profundidad: node.depth || 0,
-      }));
+      })),
+    ];
   }
 
   /**
