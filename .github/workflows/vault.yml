@@ -68,6 +68,8 @@ jobs:
               docker rmi organigrama_surrealdb:latest || true       
               docker build -t organigrama_surrealdb:latest . 
               docker run -d --restart=always \
+                --memory="512m" \
+                --memory-swap="512m" \
                 -e MONGODB='${{ secrets.MONGODB }}' \
                 -e PORT='${{ secrets.PORT }}' \
                 -e KEYCLOAK_BASE_URL='${{ secrets.KEYCLOAK_BASE_URL }}' \
