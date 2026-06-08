@@ -19,9 +19,9 @@ jobs:
       - name: Build & Push imagen Docker
         run: |      
               echo "Repository downloaded successfully."            
-              docker stop organigrama_surrealdb || true
-              docker rm organigrama_surrealdb || true 
-              docker rmi organigrama_surrealdb:latest || true       
+              docker stop organigrama_api_v2 || true
+              docker rm organigrama_api_v2 || true 
+              docker rmi organigrama_api_v2:latest || true       
               docker build -t organigrama_api_v2:latest . 
               docker run -d --restart=always \               
                 -e MONGODB='${{ secrets.MONGODB }}' \
@@ -36,5 +36,5 @@ jobs:
                 -e S3_FOLDER='${{ secrets.S3_FOLDER }}' \
                 -e S3_API_KEY='${{ secrets.S3_API_KEY }}' \
                 -p 0.0.0.0:7053:3000 --name organigrama_api_v2 organigrama_api_v2:latest
-              docker logs organigrama_surrealdb
+              docker logs organigrama_api_v2
               exit
