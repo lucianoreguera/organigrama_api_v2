@@ -23,7 +23,7 @@ jobs:
               docker rm organigrama_api_v2 || true 
               docker rmi organigrama_api_v2:latest || true       
               docker build -t organigrama_api_v2:latest . 
-              docker run -d --restart=always \               
+              docker run -d --restart=always \
                 -e MONGODB='${{ secrets.MONGODB }}' \
                 -e PORT='${{ secrets.PORT }}' \
                 -e KEYCLOAK_BASE_URL='${{ secrets.KEYCLOAK_BASE_URL }}' \
@@ -35,6 +35,8 @@ jobs:
                 -e S3_API_URL='${{ secrets.S3_API_URL }}' \
                 -e S3_FOLDER='${{ secrets.S3_FOLDER }}' \
                 -e S3_API_KEY='${{ secrets.S3_API_KEY }}' \
-                -p 0.0.0.0:7053:3000 --name organigrama_api_v2 organigrama_api_v2:latest
+                -p 0.0.0.0:7053:3000 \
+                --name organigrama_api_v2 \
+                organigrama_api_v2:latest
               docker logs organigrama_api_v2
               exit
