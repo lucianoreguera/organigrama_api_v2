@@ -4,9 +4,13 @@ import { Model, Types } from 'mongoose';
 import { OrganigramVersion } from '../organigrams_version/entities/organigram-version.entity';
 import { DepartmentNode } from '../organigrams_version/entities/department-node.entity';
 import { Level } from '../levels/entities/level.entity';
+import { PersonType } from '../people/enums/person-type.enums';
 import {
   SecretariaResponseDto,
   DepartmentFlatResponseDto,
+  PersonaCargoDto,
+  PersonaPublicaResponseDto,
+  PersonaRol,
 } from './dto/public-organigram.dto';
 
 @Injectable()
@@ -223,6 +227,109 @@ export class PublicOrganigramService {
     return {
       departmento: (node.department as any)?.name || '',
       nivel: (node.level_id as any)?.name || '',
+    };
+  }
+
+  /**
+   * Lista todos los funcionarios y asesores asignados a nodos de la versión activa,
+   * agrupados por persona con los nodos donde están asignados
+   */
+  async getAllPersonas(): Promise<PersonaPublicaResponseDto[]> {
+    this.logger.log(
+      'Obteniendo funcionarios y asesores del organigrama activo',
+    );
+
+    const activeVersion = await this.getActiveVersion();
+
+    const nodes = await this.departmentNodeModel
+      .find({
+        version: activeVersion._id,
+        $or: [
+          { responsible_official: { $ne: null } },
+          { 'assigned_assessors.0': { $exists: true } },
+        ],
+      })
+      .populate('department', 'name code')
+      .populate('level_id', 'name')
+      .populate('responsible_official')
+      .populate('assigned_assessors')
+      .lean();
+
+    const personas = new Map<string, PersonaPublicaResponseDto>();
+
+    const addCargo = (person: any, cargo: PersonaCargoDto) => {
+      // Persona borrada (populate devuelve null) o inactiva
+      if (!person || person.is_active === false) return;
+
+      const id = (person._id as Types.ObjectId).toString();
+      if (!personas.has(id)) {
+        personas.set(id, this.toPersonaDto(person));
+      }
+      personas.get(id)!.cargos.push(cargo);
+    };
+
+    for (const node of nodes) {
+      addCargo(
+        node.responsible_official,
+        this.toCargo(node, PersonaRol.RESPONSABLE),
+      );
+
+      for (const assessor of node.assigned_assessors || []) {
+        addCargo(assessor, this.toCargo(node, PersonaRol.ASESOR));
+      }
+    }
+
+    const minDepth = (persona: PersonaPublicaResponseDto) =>
+      Math.min(...persona.cargos.map((cargo) => cargo.profundidad));
+
+    const result = [...personas.values()].sort((a, b) => {
+      // Funcionarios primero, luego asesores
+      if (a.tipo !== b.tipo) {
+        return a.tipo === PersonType.OFFICIAL ? -1 : 1;
+      }
+      const depthDiff = minDepth(a) - minDepth(b);
+      if (depthDiff !== 0) return depthDiff;
+      return (a.apellido || '').localeCompare(b.apellido || '');
+    });
+
+    const officials = result.filter(
+      (persona) => persona.tipo === PersonType.OFFICIAL,
+    ).length;
+    this.logger.log(
+      `Se encontraron ${officials} funcionarios y ${result.length - officials} asesores`,
+    );
+
+    return result;
+  }
+
+  private toCargo(node: any, rol: PersonaRol): PersonaCargoDto {
+    return {
+      rol,
+      nodo_id: (node._id as Types.ObjectId).toString(),
+      departamento: (node.department as any)?.name || '',
+      codigo: (node.department as any)?.code || undefined,
+      nivel: (node.level_id as any)?.name || '',
+      path_jerarquico: node.hierarchical_path || undefined,
+      profundidad: node.depth || 0,
+    };
+  }
+
+  private toPersonaDto(person: any): PersonaPublicaResponseDto {
+    return {
+      id: (person._id as Types.ObjectId).toString(),
+      nombre: person.firstname,
+      apellido: person.lastname,
+      cuil: person.cuil,
+      tipo: person.person_type,
+      email: person.email || undefined,
+      telefono: person.phone_number || undefined,
+      foto_url: person.photo_url || undefined,
+      bio: person.bio || undefined,
+      redes_sociales: person.social_networks || undefined,
+      titulo_cargo: person.job_title_text || undefined,
+      area_especializacion: person.expertise_area || undefined,
+      activo: person.is_active,
+      cargos: [],
     };
   }
 }

@@ -4,6 +4,7 @@ import { PeopleController } from './people.controller';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Person, PersonSchema } from './entities/person.entity';
+import { PublicOrganigramModule } from '../public-organigram/public-organigram.module';
 
 @Module({
   controllers: [PeopleController],
@@ -16,6 +17,7 @@ import { Person, PersonSchema } from './entities/person.entity';
         schema: PersonSchema,
       },
     ]),
+    PublicOrganigramModule, // Para refrescar el cache público
   ],
   exports: [MongooseModule, PeopleService],
 })

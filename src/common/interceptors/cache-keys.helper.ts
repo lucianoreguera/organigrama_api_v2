@@ -13,6 +13,13 @@ export class CacheKeys {
   }
 
   /**
+   * Genera la key para la lista de funcionarios y asesores
+   */
+  static personasList(): string {
+    return `${this.PREFIX}/api/v2/public/organigrama/personas`;
+  }
+
+  /**
    * Genera la key para los hijos de una secretaría específica
    */
   static secretariaChildren(secretariaId: string): string {

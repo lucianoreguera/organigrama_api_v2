@@ -6,6 +6,7 @@ import { HttpCacheInterceptor } from '../common/interceptors/http-cache.intercep
 import {
   SecretariaResponseDto,
   DepartmentFlatResponseDto,
+  PersonaPublicaResponseDto,
 } from './dto/public-organigram.dto';
 import { ParseMongoIdPipe } from '../common/pipes/parse-mongo-id.pipe';
 
@@ -42,6 +43,32 @@ export class PublicOrganigramController {
   })
   async getAllSecretarias(): Promise<SecretariaResponseDto[]> {
     return this.publicOrganigramService.getAllSecretarias();
+  }
+
+  @Get('personas')
+  @ApiOperation({
+    summary: 'Listar funcionarios y asesores',
+    description:
+      'Obtiene todos los funcionarios y asesores asignados a nodos del organigrama activo, agrupados por persona con los nodos donde están asignados. Resultado en cache.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de funcionarios y asesores obtenida exitosamente',
+    type: [PersonaPublicaResponseDto],
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'No se encontró una versión activa del organigrama',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'No hay una versión activa del organigrama',
+        error: 'Not Found',
+      },
+    },
+  })
+  async getAllPersonas(): Promise<PersonaPublicaResponseDto[]> {
+    return this.publicOrganigramService.getAllPersonas();
   }
 
   @Get('secretarias/:id/hijos')

@@ -972,6 +972,8 @@ export class OrganigramVersionsService {
     // Actualizar el nodo con el funcionario responsable
     await this.updateNodeResponsible(nodeId, responsibleId);
 
+    this.refreshPublicCacheIfActive(version, 'asignar funcionario');
+
     return version;
   }
 
@@ -992,23 +994,30 @@ export class OrganigramVersionsService {
       `Funcionario responsable removido exitosamente del nodo ${nodeId}`,
     );
 
-    // Refrescar cache público automáticamente (no bloqueante) si la versión es activa
-    if (version.is_active) {
-      this.cacheWarmingService
-        .refreshPublicCache()
-        .then(() => {
-          this.logger.log(
-            '✅ Cache público refrescado después de remover funcionario',
-          );
-        })
-        .catch((error) => {
-          this.logger.error(
-            `⚠️ Error refrescando cache después de remover funcionario: ${error.message}`,
-          );
-        });
-    }
+    this.refreshPublicCacheIfActive(version, 'remover funcionario');
 
     return version;
+  }
+
+  /**
+   * Refresca el cache público (no bloqueante) si la versión es la activa
+   */
+  private refreshPublicCacheIfActive(
+    version: OrganigramVersion,
+    motivo: string,
+  ): void {
+    if (!version.is_active) return;
+
+    this.cacheWarmingService
+      .refreshPublicCache()
+      .then(() => {
+        this.logger.log(`✅ Cache público refrescado después de ${motivo}`);
+      })
+      .catch((error) => {
+        this.logger.error(
+          `⚠️ Error refrescando cache después de ${motivo}: ${error.message}`,
+        );
+      });
   }
 
   private async removeNodeResponsible(nodeId: string): Promise<void> {
@@ -1105,6 +1114,8 @@ export class OrganigramVersionsService {
     this.logger.log(
       `Asesores asignados exitosamente al nodo ${nodeId}: ${assessorIds.join(', ')}`,
     );
+
+    this.refreshPublicCacheIfActive(version, 'asignar asesores');
 
     return version;
   }
@@ -1270,6 +1281,8 @@ export class OrganigramVersionsService {
       `Asesores agregados exitosamente al nodo ${nodeId}: ${assessorIds.join(', ')}`,
     );
 
+    this.refreshPublicCacheIfActive(version, 'agregar asesores');
+
     return version;
   }
 
@@ -1312,6 +1325,8 @@ export class OrganigramVersionsService {
     this.logger.log(
       `Asesores removidos exitosamente del nodo ${nodeId}: ${assessorIds.join(', ')}`,
     );
+
+    this.refreshPublicCacheIfActive(version, 'remover asesores');
 
     return version;
   }

@@ -28,6 +28,9 @@ export class CacheWarmingService {
       // 2. Pre-cachear hijos de todas las secretarías (en paralelo)
       await this.warmAllSecretariasChildren();
 
+      // 3. Pre-cachear lista de funcionarios y asesores
+      await this.warmPersonasList();
+
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
       this.logger.log(
         `✅ Cache warming completado exitosamente en ${duration}s`,
@@ -116,6 +119,30 @@ export class CacheWarmingService {
     } catch (error) {
       this.logger.error(
         `Error pre-cacheando lista de secretarías: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Pre-cachea la lista de funcionarios y asesores
+   */
+  private async warmPersonasList(): Promise<void> {
+    try {
+      this.logger.log('👥 Pre-cacheando lista de funcionarios y asesores...');
+
+      const personas = await this.publicOrganigramService.getAllPersonas();
+
+      const cacheKey = CacheKeys.personasList();
+      await this.cacheManager.set(cacheKey, personas, this.TTL);
+
+      this.logger.log(
+        `✅ Lista de funcionarios y asesores cacheada (${personas.length} items)`,
+      );
+      this.logger.debug(`🔑 Cache Key guardada: ${cacheKey}`);
+    } catch (error) {
+      this.logger.error(
+        `Error pre-cacheando lista de funcionarios y asesores: ${error.message}`,
       );
       throw error;
     }

@@ -13,6 +13,7 @@ import { handleExceptions } from '../common/helpers/handle-exception';
 import { QueryPersonDto } from './dto/query-person.dto';
 import { PaginationService } from '../common/services/pagination.service';
 import { FileUploadService } from '../common/services/file-upload.service';
+import { CacheWarmingService } from '../public-organigram/cache-warming.service';
 
 @Injectable()
 export class PeopleService {
@@ -22,6 +23,7 @@ export class PeopleService {
     private readonly peopleModel: Model<Person>,
     private readonly paginationService: PaginationService,
     private readonly fileUploadService: FileUploadService,
+    private readonly cacheWarmingService: CacheWarmingService,
   ) {}
 
   // async create(createPersonDto: CreatePersonDto) {
@@ -190,6 +192,7 @@ export class PeopleService {
       const updatedPerson = await this.peopleModel.findById(id);
 
       this.logger.log(`Persona actualizada exitosamente con ID: ${id}`);
+      this.refreshPublicCache('actualizar persona');
 
       // TODO: Implementar limpieza de la foto anterior si se subió una nueva
       // Esto requeriría un método deleteFile en el FileUploadService
@@ -214,6 +217,7 @@ export class PeopleService {
     const person = await this.findOne(id);
     person.is_active = false;
     await person.save();
+    this.refreshPublicCache('inactivar persona');
     return person;
   }
 
@@ -221,6 +225,7 @@ export class PeopleService {
     const person = await this.findOne(id);
     person.is_active = true;
     await person.save();
+    this.refreshPublicCache('activar persona');
     return person;
   }
 
@@ -228,6 +233,7 @@ export class PeopleService {
     const { deletedCount } = await this.peopleModel.deleteOne({ _id: id });
     if (deletedCount === 0)
       throw new NotFoundException(`Person with id ${id} not found`);
+    this.refreshPublicCache('eliminar persona');
     return;
   }
 
@@ -252,6 +258,24 @@ export class PeopleService {
     }
     person.photo_url = photoUrlToUpdate;
     await person.save();
+    this.refreshPublicCache('actualizar foto de persona');
     return person;
+  }
+
+  /**
+   * Refresca el cache público (no bloqueante) para que los endpoints
+   * públicos reflejen los cambios de la persona
+   */
+  private refreshPublicCache(motivo: string): void {
+    this.cacheWarmingService
+      .refreshPublicCache()
+      .then(() => {
+        this.logger.log(`✅ Cache público refrescado después de ${motivo}`);
+      })
+      .catch((error) => {
+        this.logger.error(
+          `⚠️ Error refrescando cache después de ${motivo}: ${error.message}`,
+        );
+      });
   }
 }
