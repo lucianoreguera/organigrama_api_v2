@@ -1,3 +1,5 @@
+name: Deploy a Producción
+
 on:
   push:
     branches:
@@ -5,68 +7,22 @@ on:
   workflow_dispatch:
 
 jobs:
-  run_pull:
-    name: run pull
-    runs-on: ubuntu-latest
+  deploy-main:
+    name: Deploy Producción
+    runs-on: [self-hosted, server2]
+    if: github.ref == 'refs/heads/main'
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout código
+        uses: actions/checkout@v4
 
-      - name: Install Vault CLI
-        run: |
-          curl -fsSL https://releases.hashicorp.com/vault/1.15.0/vault_1.15.0_linux_amd64.zip -o vault.zip
-          unzip vault.zip
-          sudo mv vault /usr/local/bin/
-          vault --version
-
-      - name: Set Vault environment variables
-        run: |
-          echo "VAULT_ADDR=${{ secrets.VAULT_ADDR }}" >> $GITHUB_ENV
-          echo "VAULT_TOKEN=${{ secrets.VAULT_ROOT_TOKEN }}" >> $GITHUB_ENV
-
-      - name: Authenticate to Vault with Root Token
-        run: |
-          vault login ${{ secrets.VAULT_ROOT_TOKEN }}
-
-      - name: Read secret from Vault VARIABLES DEL PARA EL HOST (e.g., /kv/sistemas)
-        id: read_secret
-        run: |
-          echo "::add-mask::$(vault kv get -mount=kv -field=host sistemas)"
-          echo "::add-mask::$(vault kv get -mount=kv -field=port sistemas)"
-          echo "::add-mask::$(vault kv get -mount=kv -field=user sistemas)"
-          echo "::add-mask::$(vault kv get -mount=kv -field=pass sistemas)"
-
-          echo "host=$(vault kv get -mount=kv -field=host sistemas)" >> $GITHUB_OUTPUT
-          echo "port=$(vault kv get -mount=kv -field=port sistemas)" >> $GITHUB_OUTPUT
-          echo "user=$(vault kv get -mount=kv -field=user sistemas)" >> $GITHUB_OUTPUT
-          echo "pass=$(vault kv get -mount=kv -field=pass sistemas)" >> $GITHUB_OUTPUT
-        
-      - name: Ejecutar comandos remotos por SSH
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-            host: ${{ steps.read_secret.outputs.host }}
-            username: ${{ steps.read_secret.outputs.user }}
-            password: ${{ steps.read_secret.outputs.pass }}
-            port: ${{ steps.read_secret.outputs.port }}
-            script: | 
-              echo "Downloading repository..."
-              
-              # Obtener nombre del repositorio (sin el owner)
-              echo "GITHUB_REPOSITORY=git@github.com:${{ github.repository }}.git"  
-              REPO_NAME=$(basename "${{ github.repository }}")   
-              echo "REPO_NAME=${REPO_NAME}"        
-              if [ ! -d "/home/${REPO_NAME}" ]; then
-                cd /home
-                git clone git@github.com:${{ github.repository }}.git
-              fi        
-              cd /home/${REPO_NAME}
-              git checkout main
-              git pull
+      - name: Build & Push imagen Docker
+        run: |      
               echo "Repository downloaded successfully."            
-              docker stop organigrama_surrealdb || true
-              docker rm organigrama_surrealdb || true 
-              docker rmi organigrama_surrealdb:latest || true       
-              docker build -t organigrama_surrealdb:latest . 
+              docker stop organigrama_api_v2 || true
+              docker rm organigrama_api_v2 || true 
+              docker rmi organigrama_api_v2:latest || true       
+              docker build -t organigrama_api_v2:latest . 
               docker run -d --restart=always \
                 -e MONGODB='${{ secrets.MONGODB }}' \
                 -e PORT='${{ secrets.PORT }}' \
@@ -79,6 +35,8 @@ jobs:
                 -e S3_API_URL='${{ secrets.S3_API_URL }}' \
                 -e S3_FOLDER='${{ secrets.S3_FOLDER }}' \
                 -e S3_API_KEY='${{ secrets.S3_API_KEY }}' \
-                -p 0.0.0.0:7053:3000 --name organigrama_surrealdb organigrama_surrealdb:latest
-              docker logs organigrama_surrealdb
+                -p 0.0.0.0:7053:3000 \
+                --name organigrama_api_v2 \
+                organigrama_api_v2:latest
+              docker logs organigrama_api_v2
               exit
