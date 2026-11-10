@@ -4,7 +4,7 @@
 
 ## Descripción
 
-API REST para la gestión del organigrama municipal de Catamarca.
+API REST para la gestión del organigrama municipal de San Fernando del Valle de Catamarca.
 
 ## Configuración del proyecto
 
